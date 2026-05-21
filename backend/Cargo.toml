@@ -1,0 +1,25 @@
+[package]
+name = "hdhomerun-backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8"
+directories = "6.0"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "net", "signal", "sync"] }
+toml = "0.9"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+http-body-util = "0.1"
+proptest = "1.9"
+tempfile = "3.23"
+tower = { version = "0.5", features = ["util"] }

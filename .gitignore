@@ -1,0 +1,6 @@
+backend/target/
+
+# Editor and local OS noise
+.DS_Store
+*.swp
+*.swo
