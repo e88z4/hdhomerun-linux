@@ -29,6 +29,7 @@ class AppController : public QObject
 
 public:
     explicit AppController(QObject *parent = nullptr);
+    ~AppController() override;
 
     QVariantList devices() const;
     int selectedDeviceIndex() const;
@@ -80,6 +81,7 @@ private:
     void probeBackend(bool allowStart);
     void waitForBackend(int remainingAttempts);
     void startBundledBackend();
+    void shutdownBackendProcess();
     void loadBootstrap();
     void loadDevices();
     void loadLineup();

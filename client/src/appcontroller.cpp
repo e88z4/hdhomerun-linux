@@ -26,6 +26,15 @@ AppController::AppController(QObject *parent)
 {
     setStageTitle(QStringLiteral("HDHomeRun Linux Player"));
     setStageSubtitle(QStringLiteral("Checking backend availability"));
+
+    if (auto *application = QCoreApplication::instance()) {
+        connect(application, &QCoreApplication::aboutToQuit, this, &AppController::shutdownBackendProcess, Qt::DirectConnection);
+    }
+}
+
+AppController::~AppController()
+{
+    shutdownBackendProcess();
 }
 
 QVariantList AppController::devices() const { return m_devices; }
@@ -263,6 +272,28 @@ void AppController::startBundledBackend()
     }
 
     waitForBackend(15);
+}
+
+void AppController::shutdownBackendProcess()
+{
+    if (!m_backendProcess) {
+        return;
+    }
+
+    auto *process = m_backendProcess;
+    m_backendProcess = nullptr;
+
+    disconnect(process, nullptr, this, nullptr);
+
+    if (process->state() != QProcess::NotRunning) {
+        process->terminate();
+        if (!process->waitForFinished(1500)) {
+            process->kill();
+            process->waitForFinished(1000);
+        }
+    }
+
+    delete process;
 }
 
 void AppController::loadBootstrap()

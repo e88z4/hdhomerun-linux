@@ -49,4 +49,4 @@ These assets now focus on:
 
 ## Current Risk
 
-- The Flatpak manifest currently targets KDE runtime `6.8`, which flatpak-builder reports as end-of-life. The bundle is generated successfully, but the runtime version should be upgraded before treating the Flatpak packaging path as production-ready.
+- The Flatpak runtime is now pinned to KDE `6.10`. It still needs normal periodic review as new Flathub runtime branches roll forward, but it is no longer on the previously flagged end-of-life `6.8` branch.

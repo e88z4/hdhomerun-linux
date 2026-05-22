@@ -1,6 +1,6 @@
 app-id: io.github.e88z4.HDHomeRunLinuxPlayer
 runtime: org.kde.Platform
-runtime-version: "6.8"
+runtime-version: "6.10"
 sdk: org.kde.Sdk
 command: hdhomerun-linux-player
 finish-args:

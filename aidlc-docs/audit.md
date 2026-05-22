@@ -852,3 +852,34 @@
 - **Outcome**:
   - a real Flatpak bundle was generated in dist/
   - flatpak-builder reported that org.kde.Platform/org.kde.Sdk 6.8 are end-of-life, so the runtime version should be upgraded in a follow-up packaging pass
+
+## 2026-05-21T03:55:00Z
+- **Stage**: Flatpak Runtime Upgrade - Unit 5
+- **Implementation Changes**:
+  - upgraded packaging/flatpak/io.github.e88z4.HDHomeRunLinuxPlayer.yaml from KDE runtime `6.8` to `6.10`
+- **Validation Executed**:
+  - flatpak remote-info flathub org.kde.Platform/x86_64/6.10
+  - flatpak remote-info flathub org.kde.Sdk/x86_64/6.10
+  - ./packaging/flatpak/build-flatpak.sh
+- **Outcome**:
+  - the Flatpak bundle rebuilt successfully on KDE runtime `6.10`
+  - the earlier end-of-life warnings for KDE `6.8` no longer appear in the build output
+
+## 2026-05-21T04:10:00Z
+- **Stage**: Package Runtime Verification Fix - Unit 5
+- **Implementation Changes**:
+  - added explicit client shutdown handling for the auto-started backend child process in client/src/appcontroller.{h,cpp}
+- **Validation Executed**:
+  - cmake --build build/client-release
+  - timeout 8s env QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=1500 ./build/client-release/hdhomerun-linux-player
+  - ./packaging/appimage/build-appimage.sh
+  - ./packaging/flatpak/build-flatpak.sh
+  - ./packaging/debian/build-deb.sh
+  - timeout 8s env QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=1500 ./squashfs-root/AppRun
+  - flatpak install --user -y dist/HDHomeRunLinuxPlayer.flatpak
+  - timeout 12s env QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=1500 flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
+  - timeout 8s env QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=1500 /tmp/hdhr-deb-inspect/usr/bin/hdhomerun-linux-player
+- **Outcome**:
+  - the direct client binary exits cleanly without the earlier backend-child destruction warning
+  - regenerated AppImage, Flatpak, and Debian artifacts also exit cleanly in the offscreen verification path
+  - host-specific multimedia warnings remain in headless/offscreen runs, but the backend child-process cleanup issue is resolved
