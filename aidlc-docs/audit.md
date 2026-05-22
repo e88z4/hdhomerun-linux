@@ -439,6 +439,117 @@
   - per-tuner failure isolation with synthesized partial diagnostics state
   - fixture-backed tuner diagnostics contract tests
 
+## 2026-05-21T00:00:00Z
+- **Stage**: Construction Phase Continuation
+- **User Direction**: continue the project from the last AI-DLC checkpoint
+
+## 2026-05-21T00:00:00Z
+- **Stage**: Functional Design Planning - Unit 3
+- **Current Unit**: Unit 3 - Playback Session Orchestration and Player Adapter
+- **Focus**:
+  - define persistent playback-session behavior across start, switch, and retry flows
+  - define the mpv or libmpv ownership boundary between backend orchestration and later client embedding
+  - define playback-source handoff, failure handling, and current-session API contracts
+
+## 2026-05-21T00:00:00Z
+- **Stage**: Functional Design Planning Input - Unit 3
+- **Answers Captured**:
+  - Playback adapter owner: backend-owned persistent `mpv` process behind a stable adapter boundary.
+  - Channel switching: reuse one persistent player session and replace the current stream inside that session.
+  - Playback source handoff: pass the direct HDHomeRun playback URL from Unit 2 into the player adapter.
+  - Retry posture: one bounded automatic retry for clearly retryable startup failures, then surface a structured error.
+  - Initial playback API surface: current session state plus start, stop, and switch-channel endpoints.
+
+## 2026-05-21T00:00:00Z
+- **Stage**: Functional Design Generation - Unit 3
+- **Artifacts Generated**:
+  - aidlc-docs/construction/unit-3-playback-session/functional-design/business-logic-model.md
+  - aidlc-docs/construction/unit-3-playback-session/functional-design/business-rules.md
+  - aidlc-docs/construction/unit-3-playback-session/functional-design/domain-entities.md
+
+## 2026-05-21T00:00:00Z
+- **Stage**: Functional Design Approval - Unit 3
+- **User Response**: approve
+
+## 2026-05-21T00:00:00Z
+- **Stage**: NFR Requirements Planning - Unit 3
+- **Focus**:
+  - define playback startup and switch responsiveness targets
+  - define reliability and recovery expectations around the persistent `mpv` process
+  - define observability, safety, and test depth for backend-owned playback orchestration
+
+## 2026-05-21T00:05:00Z
+- **Stage**: NFR Requirements Planning Input - Unit 3
+- **Answers Captured**:
+  - Responsiveness target: initial playback should usually feel responsive in about 2 to 4 seconds, with faster switches when the persistent session remains healthy.
+  - Stop behavior: keep the `mpv` process available for short-lived reuse when practical.
+  - Default logging: high-level structured lifecycle events at info level, with `mpv` command or IPC detail only in debug logging.
+  - Testing depth: HTTP contract tests plus orchestration unit tests with a fake player adapter.
+  - Failure recovery: mark the session failed and rebuild the adapter only on an explicit retry path or the single bounded automatic retry path.
+
+## 2026-05-21T00:10:00Z
+- **Stage**: NFR Requirements Generation - Unit 3
+- **Artifacts Generated**:
+  - aidlc-docs/construction/unit-3-playback-session/nfr-requirements/nfr-requirements.md
+  - aidlc-docs/construction/unit-3-playback-session/nfr-requirements/tech-stack-decisions.md
+
+## 2026-05-21T00:12:00Z
+- **Stage**: NFR Design Generation - Unit 3
+- **Artifacts Generated**:
+  - aidlc-docs/construction/unit-3-playback-session/nfr-design/nfr-design-patterns.md
+  - aidlc-docs/construction/unit-3-playback-session/nfr-design/logical-components.md
+- **Decision Source**:
+  - advanced directly under the user's instruction to continue without waiting for additional approval gates unless clarification was required
+
+## 2026-05-21T00:14:00Z
+- **Stage**: Infrastructure Design Generation - Unit 3
+- **Artifacts Generated**:
+  - aidlc-docs/construction/unit-3-playback-session/infrastructure-design/infrastructure-design.md
+  - aidlc-docs/construction/unit-3-playback-session/infrastructure-design/deployment-architecture.md
+
+## 2026-05-21T00:16:00Z
+- **Stage**: Code Generation Planning - Unit 3
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-3-playback-session-code-generation-plan.md
+- **Decision Source**:
+  - implementation strategy selected directly under the user's instruction to continue without stopping and choose the best option when clarification was unnecessary
+
+## 2026-05-21T00:20:00Z
+- **Stage**: Code Generation - Unit 3
+- **Artifacts Generated**:
+  - backend/src/playback.rs
+  - backend/src/app.rs
+  - backend/src/http/routes.rs
+  - backend/src/http/types.rs
+  - backend/src/lib.rs
+  - backend/src/models.rs
+  - backend/tests/playback_contract.rs
+- **Validation**:
+  - `cargo test` passed in `backend/`
+- **Implemented Slice**:
+  - real `GET /api/playback/current` response backed by backend-owned orchestration state
+  - concrete `POST /api/playback/start`, `POST /api/playback/stop`, and `POST /api/playback/switch` endpoints
+  - persistent playback-session orchestration with one bounded automatic retry for retryable startup failures
+  - stable player-adapter boundary with a Linux `mpv` IPC implementation and a fake adapter for tests
+  - remembered playback-context persistence on successful start, switch, and stop flows
+
+## 2026-05-21T00:28:00Z
+- **Stage**: Code Generation Continuation - Unit 3
+- **Artifacts Generated**:
+  - backend/src/playback.rs
+  - backend/tests/playback_contract.rs
+  - aidlc-docs/construction/unit-3-playback-session/nfr-requirements/nfr-requirements.md
+  - aidlc-docs/construction/unit-3-playback-session/nfr-requirements/tech-stack-decisions.md
+  - aidlc-docs/construction/unit-3-playback-session/infrastructure-design/infrastructure-design.md
+  - aidlc-docs/construction/plans/unit-3-playback-session-code-generation-plan.md
+- **Validation**:
+  - `cargo test` passed in `backend/`
+- **Implemented Slice**:
+  - explicit player-dependency preflight for `mpv`
+  - early warning projection through `GET /api/playback/current` when `mpv` is unavailable
+  - stable structured playback-start failure when the player executable is missing
+  - optional executable override through `HDHR_BACKEND_MPV_BIN`
+
 ## 2026-05-20T23:32:16Z
 - **Stage**: Code Generation - Unit 1
 - **Artifacts Generated**:
@@ -471,3 +582,273 @@
   - define discovery and lineup retrieval behavior
   - define device selection and tuner-status domain logic
   - define how backend contracts represent channel and device capabilities
+
+## 2026-05-21T00:40:00Z
+- **Stage**: Packaging Strategy Bootstrap - Unit 5
+- **Decision Trail**:
+  - AppImage should prefer a bundled `mpv` inside the AppDir while still allowing fallback to a host `mpv` during development or partial staging.
+  - Flatpak should bundle `mpv` inside the sandbox rather than rely on host-binary access.
+  - Debian packaging should declare `mpv` as a normal distro dependency rather than ship a second unmanaged copy.
+- **Artifacts Generated**:
+  - packaging/README.md
+  - packaging/common/export-mpv-env.sh
+  - packaging/common/smoke-test-runtime.sh
+  - packaging/appimage/AppRun
+  - packaging/appimage/README.md
+  - packaging/flatpak/io.github.e88z4.HDHomeRunLinuxPlayer.yaml
+  - packaging/flatpak/hdhomerun-linux-player-wrapper.sh
+  - packaging/debian/control
+  - packaging/debian/README.md
+- **Validation**:
+  - shell syntax checks passed for packaging helper scripts
+- **Implemented Slice**:
+  - shared runtime helper to export `HDHR_BACKEND_MPV_BIN`
+  - initial AppImage launcher wrapper that prefers bundled `mpv`
+  - initial Flatpak manifest and wrapper that target sandboxed bundled `mpv`
+  - Debian control skeleton with `mpv` as an explicit package dependency
+
+## 2026-05-21T00:55:00Z
+- **Stage**: Functional Design Planning - Unit 4
+- **Current Unit**: Unit 4 - Qt/QML Client Shell and Live-TV User Journey
+- **Decision Source**:
+  - advanced directly under user instruction to continue without stopping and choose the best default options without extra interviews
+- **Answers Chosen**:
+  - Startup UX: branded launch overlay with automatic backend readiness and bootstrap restore handling.
+  - Main shell layout: player-first layout with left channel rail, central playback stage, and right diagnostics drawer.
+  - No-device handling: blocking but recoverable empty state with retry scan behavior.
+  - Failure UX: inline playback-stage failure panel with retry and diagnostics actions.
+  - Device switching: explicit header device switcher with clean session handoff behavior.
+
+## 2026-05-21T01:00:00Z
+- **Stage**: Functional Design Generation - Unit 4
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-4-client-shell-functional-design-plan.md
+  - aidlc-docs/construction/unit-4-client-shell/functional-design/business-logic-model.md
+  - aidlc-docs/construction/unit-4-client-shell/functional-design/business-rules.md
+  - aidlc-docs/construction/unit-4-client-shell/functional-design/domain-entities.md
+- **Design Notes**:
+  - Unit 4 identified two backend contract follow-ups needed for full client integration: explicit device selection and a replay-oriented retry command path.
+
+## 2026-05-21T01:08:00Z
+- **Stage**: Client Shell Scaffold Spike - Unit 4
+- **Decision Source**:
+  - advanced directly after Unit 4 functional design under user instruction to keep moving without stopping
+- **Artifacts Generated**:
+  - client/CMakeLists.txt
+  - client/src/main.cpp
+  - client/README.md
+  - client/qml/Main.qml
+  - client/qml/components/ChannelRail.qml
+  - client/qml/components/PlaybackStage.qml
+  - client/qml/components/DiagnosticsDrawer.qml
+- **Validation**:
+  - editor diagnostics passed after creation
+  - local Qt6 build validation is still blocked because Qt6 development packages are not available in the current environment
+- **Implemented Slice**:
+  - first Qt6 Quick shell scaffold
+  - player-first desktop layout with persistent channel rail and diagnostics drawer
+  - mock-driven state aligned to Unit 4 functional design so future backend wiring can replace placeholders incrementally
+
+## 2026-05-21T01:18:00Z
+- **Stage**: Unit 4 Integration Support - Backend Contract Delta
+- **Artifacts Generated**:
+  - backend/src/models.rs
+  - backend/src/http/routes.rs
+  - backend/tests/devices_contract.rs
+  - backend/tests/playback_contract.rs
+- **Validation**:
+  - `cargo test` passed in `backend/`
+- **Implemented Slice**:
+  - explicit `POST /api/devices/select`
+  - explicit `POST /api/playback/retry`
+  - remembered-context update behavior for device changes
+  - contract coverage for device selection and retry flows
+
+## 2026-05-21T01:22:00Z
+- **Stage**: NFR Requirements Planning - Unit 4
+- **Decision Source**:
+  - advanced directly under user instruction to continue without stopping and choose the best defaults without extra interviews
+- **Answers Chosen**:
+  - UI stack: Qt6 Quick with Qt Quick Controls 2 and CMake.
+  - Responsiveness target: immediate shell visibility with fast readiness transition after backend availability.
+  - Failure posture: inline recoverable states instead of modal dead ends.
+  - Client logging: minimal by default, deeper traces only in debug mode.
+  - Testing posture: backend contract tests plus later client smoke and shell-state tests.
+
+## 2026-05-21T01:25:00Z
+- **Stage**: NFR Requirements Generation - Unit 4
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-4-client-shell-nfr-requirements-plan.md
+  - aidlc-docs/construction/unit-4-client-shell/nfr-requirements/nfr-requirements.md
+  - aidlc-docs/construction/unit-4-client-shell/nfr-requirements/tech-stack-decisions.md
+
+## 2026-05-21T01:32:00Z
+- **Stage**: NFR Design Planning - Unit 4
+- **Decision Source**:
+  - advanced directly under user instruction to keep moving without stopping and choose the best defaults
+- **Answers Chosen**:
+  - Launch pattern: bounded startup overlay.
+  - State pattern: backend-contract projection layer before QML presentation.
+  - Failure pattern: inline recovery surfaces.
+  - Diagnostics pattern: expandable side drawer.
+
+## 2026-05-21T01:35:00Z
+- **Stage**: NFR Design Generation - Unit 4
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-4-client-shell-nfr-design-plan.md
+  - aidlc-docs/construction/unit-4-client-shell/nfr-design/nfr-design-patterns.md
+  - aidlc-docs/construction/unit-4-client-shell/nfr-design/logical-components.md
+
+## 2026-05-21T01:40:00Z
+- **Stage**: Infrastructure Design Planning - Unit 4
+- **Decision Source**:
+  - advanced directly under user instruction to keep moving without stopping and choose the best defaults
+- **Answers Chosen**:
+  - Runtime shape: separate Qt client process over loopback HTTP.
+  - Client startup: client remains the primary launcher and backend readiness coordinator.
+  - Preference storage: client stores only presentation preferences locally.
+  - Display support: Qt Wayland support with X11 fallback assumptions.
+
+## 2026-05-21T01:43:00Z
+- **Stage**: Infrastructure Design Generation - Unit 4
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-4-client-shell-infrastructure-design-plan.md
+  - aidlc-docs/construction/unit-4-client-shell/infrastructure-design/infrastructure-design.md
+  - aidlc-docs/construction/unit-4-client-shell/infrastructure-design/deployment-architecture.md
+
+## 2026-05-21T01:55:00Z
+- **Stage**: Code Generation Planning - Unit 4
+- **Decision Source**:
+  - advanced directly under user instruction to continue into real client-backend integration
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-4-client-shell-code-generation-plan.md
+
+## 2026-05-21T02:05:00Z
+- **Stage**: Code Generation Spike - Unit 4
+- **Artifacts Generated**:
+  - client/src/appcontroller.h
+  - client/src/appcontroller.cpp
+  - client/src/main.cpp
+  - client/CMakeLists.txt
+  - client/qml/Main.qml
+  - client/README.md
+- **Implemented Slice**:
+  - Qt-side loopback backend gateway and shell controller
+  - launch/readiness probing with configurable backend command path
+  - real device, lineup, playback current, diagnostics, device selection, and retry wiring
+  - preservation of the player-first shell layout while the final video-surface integration remains deferred
+
+## 2026-05-21T02:20:00Z
+- **Stage**: Build and Test - Unit 4
+- **Environment Changes**:
+  - installed Qt6 development packages on Debian sid using apt
+  - qt6-base-dev
+  - qt6-declarative-dev
+  - qt6-base-dev-tools
+  - qt6-declarative-dev-tools
+- **Validation Executed**:
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - timeout 5s env QT_QPA_PLATFORM=offscreen ./build/client/hdhomerun-linux-player
+- **Outcome**:
+  - client configured successfully
+  - client built successfully
+  - offscreen launch smoke test produced no startup errors
+
+## 2026-05-21T02:30:00Z
+- **Stage**: Build and Test Refinement - Unit 4
+- **Build System Changes**:
+  - set Qt policy QTP0004 to NEW in client/CMakeLists.txt
+  - enabled NO_IMPORT_SCAN for the client QML module to avoid unnecessary static-plugin autolink warnings in the dynamic Linux build
+- **Validation Executed**:
+  - rm -rf build/client
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+- **Outcome**:
+  - client configured cleanly without the earlier Qt QML/CMake warnings
+  - client rebuilt successfully after the warning cleanup
+
+## 2026-05-21T02:45:00Z
+- **Stage**: Code Generation and Build/Test - Unit 4
+- **Implementation Changes**:
+  - added a client-managed backend playback adapter mode selected with HDHR_BACKEND_PLAYER_MODE=client
+  - updated the Qt app controller to auto-start the backend in client-managed mode
+  - replaced the playback-stage placeholder with an embedded Qt Multimedia surface bound to the backend playback URL
+- **Validation Executed**:
+  - cargo test --manifest-path backend/Cargo.toml
+  - rm -rf build/client
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - timeout 5s env QT_QPA_PLATFORM=offscreen ./build/client/hdhomerun-linux-player
+- **Outcome**:
+  - backend tests passed
+  - client rebuilt successfully with Qt Multimedia support
+  - offscreen startup succeeded, with non-fatal host multimedia warnings from FFmpeg and PipeWire on this machine
+
+## 2026-05-21T02:55:00Z
+- **Stage**: Test Automation - Unit 4
+- **Implemented Tests**:
+  - backend/src/playback.rs unit coverage for client-managed adapter selection and streaming behavior
+  - client CTest offscreen smoke test using HDHR_CLIENT_EXIT_AFTER_MS for deterministic exit
+- **Validation Executed**:
+  - cargo test --manifest-path backend/Cargo.toml
+  - rm -rf build/client
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+- **Outcome**:
+  - backend test suite passed with new client-managed playback assertions
+  - client offscreen smoke test passed under CTest
+
+## 2026-05-21T03:10:00Z
+- **Stage**: Packaging Runtime Kickoff - Unit 5
+- **Artifacts Generated**:
+  - aidlc-docs/construction/plans/unit-5-packaging-runtime-plan.md
+  - packaging/common/export-runtime-env.sh
+- **Implementation Changes**:
+  - replaced `mpv`-first packaging helpers with backend-path and client-managed playback runtime helpers
+  - updated AppImage and Flatpak launchers to source the shared runtime helper
+  - updated Debian package metadata to depend on Qt QML multimedia/runtime modules instead of `mpv`
+  - updated packaging smoke checks to resolve repo-local backend and client binaries during development
+- **Validation Executed**:
+  - sh -n packaging/common/export-runtime-env.sh packaging/common/smoke-test-runtime.sh packaging/common/check-host-dependencies.sh packaging/appimage/AppRun packaging/flatpak/hdhomerun-linux-player-wrapper.sh
+  - ./packaging/common/check-host-dependencies.sh
+  - ./packaging/common/smoke-test-runtime.sh ./build/client/hdhomerun-linux-player
+- **Outcome**:
+  - packaging shell scripts are syntactically valid
+  - packaging runtime smoke test resolves the repo-built backend and client launcher correctly
+  - host still lacks appimagetool and flatpak-builder, so full package creation remains blocked
+
+## 2026-05-21T03:25:00Z
+- **Stage**: Packaging Build and Test - Unit 5
+- **Environment Changes**:
+  - installed flatpak-builder from Debian sid
+  - installed appimagetool under /usr/local/bin from the upstream continuous release
+- **Artifacts Generated**:
+  - dist/hdhomerun-linux-player_0.1.0_amd64.deb
+  - dist/HDHomeRunLinuxPlayer-x86_64.AppImage
+- **Validation Executed**:
+  - cargo build --manifest-path backend/Cargo.toml --release
+  - cmake -S client -B build/client-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+  - cmake --build build/client-release
+  - ./packaging/debian/build-deb.sh
+  - ./packaging/appimage/build-appimage.sh
+  - ./packaging/common/check-host-dependencies.sh
+- **Outcome**:
+  - packaging toolchain availability check now passes
+  - real Debian and AppImage artifacts were generated in dist/
+  - Flatpak tooling is installed, but Flatpak artifact generation still needs a staged flatpak-root layout and runtime-specific build wiring
+
+## 2026-05-21T03:40:00Z
+- **Stage**: Flatpak Packaging Build and Test - Unit 5
+- **Artifacts Generated**:
+  - dist/HDHomeRunLinuxPlayer.flatpak
+- **Implementation Changes**:
+  - added packaging/flatpak/build-flatpak.sh for staged binary export and bundle generation
+  - updated the Flatpak manifest to install desktop metadata, AppStream metadata, and the shared runtime helper
+  - added Flatpak audio permission for embedded playback
+- **Validation Executed**:
+  - ./packaging/flatpak/build-flatpak.sh
+- **Outcome**:
+  - a real Flatpak bundle was generated in dist/
+  - flatpak-builder reported that org.kde.Platform/org.kde.Sdk 6.8 are end-of-life, so the runtime version should be upgraded in a follow-up packaging pass

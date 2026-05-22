@@ -1,5 +1,5 @@
 use axum::extract::State;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use tokio::task;
 
@@ -8,8 +8,10 @@ use crate::device::{build_devices_response, reconcile_remembered_context};
 use crate::error::AppError;
 use crate::models::{
     BootstrapMode, BootstrapResult, ContractEndpointDescriptor, ContractEndpointStatus,
-    DevicesResponse, HealthStatus, LineupResponse, LineupState, PlaybackCurrentResponse,
-    RuntimeStateResponse, TunerDiagnostic, TunerDiagnosticsResponse, TunerDiagnosticsState,
+    DeviceSelectionRequest, DevicesResponse, HealthStatus, LineupChannel, LineupResponse, LineupState,
+    PlaybackCommandRequest, PlaybackCommandResponse, PlaybackCurrentResponse,
+    RememberedContext, RuntimeStateResponse, TunerDiagnostic, TunerDiagnosticsResponse,
+    TunerDiagnosticsState,
 };
 
 pub fn router(state: AppState) -> Router {
@@ -18,9 +20,14 @@ pub fn router(state: AppState) -> Router {
         .route("/api/state", get(runtime_state))
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/devices", get(devices))
+        .route("/api/devices/select", post(select_device))
         .route("/api/lineup", get(lineup))
         .route("/api/tuners", get(tuners))
         .route("/api/playback/current", get(playback_current))
+        .route("/api/playback/start", post(playback_start))
+        .route("/api/playback/stop", post(playback_stop))
+        .route("/api/playback/retry", post(playback_retry))
+        .route("/api/playback/switch", post(playback_switch_channel))
         .with_state(state)
 }
 
@@ -84,6 +91,58 @@ async fn devices(State(state): State<AppState>) -> Result<Json<DevicesResponse>,
         discovered_devices,
         remembered_context.as_ref(),
     )))
+}
+
+async fn select_device(
+    State(state): State<AppState>,
+    Json(request): Json<DeviceSelectionRequest>,
+) -> Result<Json<DevicesResponse>, AppError> {
+    if request.device_ref.trim().is_empty() {
+        return Err(AppError::Validation(
+            "deviceRef must not be empty when selecting a device".to_string(),
+        ));
+    }
+
+    let remembered_context = state.state_store().load_context()?;
+    let discovered_devices = discover_devices(&state).await?;
+
+    let device_exists = discovered_devices
+        .iter()
+        .any(|device| device.device_ref == request.device_ref);
+    if !device_exists {
+        return Err(AppError::Validation(
+            "requested device is not currently available".to_string(),
+        ));
+    }
+
+    let previous_device_ref = remembered_context
+        .as_ref()
+        .and_then(|context| context.device_ref.as_deref());
+    let channel_ref = if previous_device_ref == Some(request.device_ref.as_str()) {
+        remembered_context.as_ref().and_then(|context| context.channel_ref.clone())
+    } else {
+        None
+    };
+
+    let new_context = RememberedContext {
+        device_ref: Some(request.device_ref.clone()),
+        channel_ref,
+        auto_resume: remembered_context
+            .as_ref()
+            .map(|context| context.auto_resume)
+            .unwrap_or(false),
+        updated_at: playback_timestamp_now(),
+    };
+    state.state_store().save_context(&new_context)?;
+
+    let mut response = build_devices_response(discovered_devices, Some(&new_context));
+    if previous_device_ref.is_some() && previous_device_ref != Some(request.device_ref.as_str()) {
+        response
+            .warnings
+            .push("selected device changed and the remembered channel was cleared".to_string());
+    }
+
+    Ok(Json(response))
 }
 
 async fn lineup(State(state): State<AppState>) -> Result<Json<LineupResponse>, AppError> {
@@ -235,8 +294,96 @@ async fn tuners(State(state): State<AppState>) -> Result<Json<TunerDiagnosticsRe
     }))
 }
 
-async fn playback_current() -> Json<PlaybackCurrentResponse> {
-    Json(PlaybackCurrentResponse::provisional())
+async fn playback_current(State(state): State<AppState>) -> Result<Json<PlaybackCurrentResponse>, AppError> {
+    let playback = state.playback_service();
+    let response = task::spawn_blocking(move || playback.current())
+        .await
+        .map_err(|error| AppError::internal(format!("playback current task failed: {error}")))?;
+
+    Ok(Json(response))
+}
+
+async fn playback_start(
+    State(state): State<AppState>,
+    Json(request): Json<PlaybackCommandRequest>,
+) -> Result<Json<PlaybackCommandResponse>, AppError> {
+    let target = resolve_playback_target(&state, &request).await?;
+    let playback = state.playback_service();
+    let device_ref = target.device_ref.clone();
+    let channel = target.channel.clone();
+    let response = task::spawn_blocking(move || playback.start(device_ref, channel))
+        .await
+        .map_err(|error| AppError::internal(format!("playback start task failed: {error}")))?;
+
+    persist_playback_context(&state, &response, target.auto_resume)?;
+    Ok(Json(response))
+}
+
+async fn playback_stop(State(state): State<AppState>) -> Result<Json<PlaybackCommandResponse>, AppError> {
+    let auto_resume = state
+        .state_store()
+        .load_context()?
+        .as_ref()
+        .map(|context| context.auto_resume)
+        .unwrap_or(false);
+
+    let playback = state.playback_service();
+    let response = task::spawn_blocking(move || playback.stop())
+        .await
+        .map_err(|error| AppError::internal(format!("playback stop task failed: {error}")))?;
+
+    persist_playback_context(&state, &response, auto_resume)?;
+    Ok(Json(response))
+}
+
+async fn playback_switch_channel(
+    State(state): State<AppState>,
+    Json(request): Json<PlaybackCommandRequest>,
+) -> Result<Json<PlaybackCommandResponse>, AppError> {
+    let target = resolve_playback_target(&state, &request).await?;
+    let playback = state.playback_service();
+    let device_ref = target.device_ref.clone();
+    let channel = target.channel.clone();
+    let response = task::spawn_blocking(move || playback.switch_channel(device_ref, channel))
+        .await
+        .map_err(|error| AppError::internal(format!("playback switch task failed: {error}")))?;
+
+    persist_playback_context(&state, &response, target.auto_resume)?;
+    Ok(Json(response))
+}
+
+async fn playback_retry(State(state): State<AppState>) -> Result<Json<PlaybackCommandResponse>, AppError> {
+    let playback = state.playback_service();
+    let current = task::spawn_blocking(move || playback.current())
+        .await
+        .map_err(|error| AppError::internal(format!("playback retry preflight task failed: {error}")))?;
+
+    let device_ref = current
+        .selected_device_ref
+        .clone()
+        .ok_or_else(|| AppError::Validation("no retryable playback context is currently available".to_string()))?;
+    let channel_ref = current
+        .current_channel
+        .as_ref()
+        .map(|channel| channel.channel_ref.clone())
+        .ok_or_else(|| AppError::Validation("no retryable playback context is currently available".to_string()))?;
+
+    let target = resolve_playback_target(
+        &state,
+        &PlaybackCommandRequest {
+            device_ref: Some(device_ref),
+            channel_ref,
+        },
+    )
+    .await?;
+
+    let playback = state.playback_service();
+    let response = task::spawn_blocking(move || playback.start(target.device_ref.clone(), target.channel.clone()))
+        .await
+        .map_err(|error| AppError::internal(format!("playback retry task failed: {error}")))?;
+
+    persist_playback_context(&state, &response, target.auto_resume)?;
+    Ok(Json(response))
 }
 
 fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
@@ -262,6 +409,11 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
             status: ContractEndpointStatus::Available,
         },
         ContractEndpointDescriptor {
+            name: "deviceSelect".to_string(),
+            path: "/api/devices/select".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
             name: "lineup".to_string(),
             path: "/api/lineup".to_string(),
             status: ContractEndpointStatus::Available,
@@ -274,7 +426,27 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
         ContractEndpointDescriptor {
             name: "playbackCurrent".to_string(),
             path: "/api/playback/current".to_string(),
-            status: ContractEndpointStatus::Provisional,
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "playbackStart".to_string(),
+            path: "/api/playback/start".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "playbackStop".to_string(),
+            path: "/api/playback/stop".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "playbackRetry".to_string(),
+            path: "/api/playback/retry".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "playbackSwitch".to_string(),
+            path: "/api/playback/switch".to_string(),
+            status: ContractEndpointStatus::Available,
         },
     ]
 }
@@ -306,4 +478,129 @@ async fn fetch_tuner_diagnostics(
     task::spawn_blocking(move || provider.diagnostics_for(&device, remembered_context.as_ref()))
         .await
         .map_err(|error| AppError::internal(format!("tuner diagnostics task failed: {error}")))?
+}
+
+struct ResolvedPlaybackTarget {
+    device_ref: String,
+    channel: LineupChannel,
+    auto_resume: bool,
+}
+
+async fn resolve_playback_target(
+    state: &AppState,
+    request: &PlaybackCommandRequest,
+) -> Result<ResolvedPlaybackTarget, AppError> {
+    if request.channel_ref.trim().is_empty() {
+        return Err(AppError::Validation(
+            "channelRef must not be empty for playback commands".to_string(),
+        ));
+    }
+
+    let remembered_context = state.state_store().load_context()?;
+    let discovered_devices = discover_devices(state).await?;
+    let (remembered_context, cleared_stale_device) =
+        reconcile_remembered_context(remembered_context, &discovered_devices);
+
+    if cleared_stale_device {
+        state.state_store().clear_context()?;
+    }
+
+    let target_device_ref = request
+        .device_ref
+        .clone()
+        .or_else(|| remembered_context.as_ref().and_then(|context| context.device_ref.clone()))
+        .ok_or_else(|| AppError::Validation("select a discovered device before starting playback".to_string()))?;
+
+    let device = discovered_devices
+        .iter()
+        .find(|device| device.device_ref == target_device_ref)
+        .cloned()
+        .ok_or_else(|| AppError::Validation("requested playback device is not currently available".to_string()))?;
+
+    let channels = match fetch_lineup(state, device.clone()).await {
+        Ok(channels) => {
+            state
+                .store_cached_lineup(device.device_ref.clone(), channels.clone())
+                .await;
+            channels
+        }
+        Err(error) => state
+            .cached_lineup(&device.device_ref)
+            .await
+            .ok_or(error)?,
+    };
+
+    let channel = channels
+        .into_iter()
+        .find(|channel| channel_matches(channel, &request.channel_ref))
+        .ok_or_else(|| AppError::Validation("requested channel was not present in the selected device lineup".to_string()))?;
+
+    match channel.availability {
+        crate::models::ChannelAvailability::Playable => {}
+        crate::models::ChannelAvailability::Restricted => {
+            return Err(AppError::Validation(
+                channel
+                    .restriction_reason
+                    .clone()
+                    .unwrap_or_else(|| "requested channel is not playable".to_string()),
+            ));
+        }
+        crate::models::ChannelAvailability::Unavailable => {
+            return Err(AppError::Validation(
+                channel
+                    .restriction_reason
+                    .clone()
+                    .unwrap_or_else(|| "requested channel does not have a usable playback URL".to_string()),
+            ));
+        }
+    }
+
+    Ok(ResolvedPlaybackTarget {
+        device_ref: device.device_ref,
+        channel,
+        auto_resume: remembered_context
+            .as_ref()
+            .map(|context| context.auto_resume)
+            .unwrap_or(false),
+    })
+}
+
+fn channel_matches(channel: &LineupChannel, requested_channel_ref: &str) -> bool {
+    channel.channel_ref == requested_channel_ref
+        || channel.guide_number == requested_channel_ref
+        || channel
+            .channel_ref
+            .strip_prefix("channel:")
+            .is_some_and(|channel_ref| channel_ref == requested_channel_ref)
+}
+
+fn persist_playback_context(
+    state: &AppState,
+    response: &PlaybackCommandResponse,
+    auto_resume: bool,
+) -> Result<(), AppError> {
+    if response.failure.is_some() {
+        return Ok(());
+    }
+
+    let Some(device_ref) = response.selected_device_ref.clone() else {
+        return Ok(());
+    };
+    let Some(channel) = response.current_channel.as_ref() else {
+        return Ok(());
+    };
+
+    state.state_store().save_context(&RememberedContext {
+        device_ref: Some(device_ref),
+        channel_ref: Some(channel.guide_number.clone()),
+        auto_resume,
+        updated_at: playback_timestamp_now(),
+    })
+}
+
+fn playback_timestamp_now() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis().to_string())
+        .unwrap_or_else(|_| "0".to_string())
 }

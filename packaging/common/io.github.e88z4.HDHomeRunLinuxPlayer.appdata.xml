@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.e88z4.HDHomeRunLinuxPlayer</id>
+  <name>HDHomeRun Linux Player</name>
+  <summary>Native HDHomeRun live TV player for Linux</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>LicenseRef-Proprietary</project_license>
+  <launchable type="desktop-id">io.github.e88z4.HDHomeRunLinuxPlayer.desktop</launchable>
+  <url type="homepage">https://github.com/e88z4/hdhomerun-linux</url>
+  <description>
+    <p>
+      HDHomeRun Linux Player is a native Linux desktop client that discovers HDHomeRun tuners,
+      browses channel lineups, and renders live playback inside an embedded Qt viewing stage.
+    </p>
+  </description>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+  </categories>
+</component>

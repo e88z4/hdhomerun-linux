@@ -1,0 +1,15 @@
+Source: hdhomerun-linux-player
+Section: video
+Priority: optional
+Maintainer: Felix <felix@example.invalid>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: hdhomerun-linux-player
+Architecture: amd64
+Depends: ${misc:Depends}, ${shlibs:Depends}, qml6-module-qtmultimedia, qml6-module-qtquick-controls, qml6-module-qtquick-layouts
+Description: HDHomeRun live TV player for Linux
+ Native Linux HDHomeRun player composed of a local backend service and a desktop UI.
+ This packaging skeleton targets the embedded-playback architecture where the Qt UI
+ renders the playback surface in-window and the backend runs in client-managed mode.

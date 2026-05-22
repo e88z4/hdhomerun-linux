@@ -1,0 +1,35 @@
+app-id: io.github.e88z4.HDHomeRunLinuxPlayer
+runtime: org.kde.Platform
+runtime-version: "6.8"
+sdk: org.kde.Sdk
+command: hdhomerun-linux-player
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+modules:
+  - name: hdhomerun-linux-player
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 packaging/common/export-runtime-env.sh /app/libexec/hdhomerun-linux-player/export-runtime-env.sh
+      - install -Dm755 packaging/flatpak/hdhomerun-linux-player-wrapper.sh /app/bin/hdhomerun-linux-player
+      - install -Dm644 packaging/common/hdhomerun-linux-player.desktop /app/share/applications/io.github.e88z4.HDHomeRunLinuxPlayer.desktop
+      - install -Dm644 packaging/common/io.github.e88z4.HDHomeRunLinuxPlayer.svg /app/share/icons/hicolor/scalable/apps/io.github.e88z4.HDHomeRunLinuxPlayer.svg
+      - install -Dm644 packaging/common/io.github.e88z4.HDHomeRunLinuxPlayer.appdata.xml /app/share/metainfo/io.github.e88z4.HDHomeRunLinuxPlayer.appdata.xml
+      - |
+        if [ -x dist/flatpak-root/app/bin/hdhomerun-linux-player-real ]; then
+          install -Dm755 dist/flatpak-root/app/bin/hdhomerun-linux-player-real /app/bin/hdhomerun-linux-player-real
+        fi
+      - |
+        if [ -x dist/flatpak-root/app/bin/hdhomerun-backend ]; then
+          install -Dm755 dist/flatpak-root/app/bin/hdhomerun-backend /app/bin/hdhomerun-backend
+        fi
+    sources:
+      - type: dir
+        path: ../..
+
+# The manifest intentionally expects a pre-staged dist/flatpak-root tree with the Qt client and backend.
+# The packaged runtime defaults to client-managed embedded playback inside the sandbox.

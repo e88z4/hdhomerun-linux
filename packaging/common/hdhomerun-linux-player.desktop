@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=HDHomeRun Linux Player
+Comment=Native HDHomeRun live TV player for Linux
+Exec=hdhomerun-linux-player
+Icon=io.github.e88z4.HDHomeRunLinuxPlayer
+Categories=AudioVideo;Video;Player;
+Terminal=false
+StartupNotify=true

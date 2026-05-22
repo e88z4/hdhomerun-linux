@@ -4,7 +4,7 @@
 - **Project Name**: hdhomerun-linux-player
 - **Project Type**: Brownfield
 - **Start Date**: 2026-05-20T23:32:16Z
-- **Current Stage**: CONSTRUCTION - Code Generation Review - Unit 2
+- **Current Stage**: CONSTRUCTION - Build and Test - Unit 5
 
 ## Workspace State
 - **Existing Code**: Yes
@@ -49,4 +49,5 @@
 - **Approved Frontend Direction**: Qt/QML desktop client with a modern polished UI
 - **Approved Backend Direction**: Standalone local service bundled with the desktop app from day one
 - **Approved Playback Strategy**: Persistent in-app player session backed by mpv/libmpv and libhdhomerun-centered device integration
+- **Packaging Runtime Decision**: AppImage prefers bundled `mpv`, Flatpak bundles `mpv` inside the sandbox, Debian depends on the distro `mpv` package
 - **First Deliverable Expectation**: AppImage, Flatpak, and Debian packaging included in the first deliverable

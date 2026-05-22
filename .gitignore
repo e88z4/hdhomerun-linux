@@ -1,4 +1,11 @@
 backend/target/
+build/
+dist/
+.flatpak-builder/
+packaging/build/
+packaging/out/
+packaging/.flatpak-builder/
+*.AppImage
 
 # Editor and local OS noise
 .DS_Store

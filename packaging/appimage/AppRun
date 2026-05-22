@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+set -eu
+
+APPDIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+export APPDIR
+
+ENV_SCRIPT="$APPDIR/usr/lib/hdhomerun-linux-player/export-runtime-env.sh"
+MAIN_BIN="${HDHR_LINUX_PLAYER_MAIN:-$APPDIR/usr/bin/hdhomerun-linux-player}"
+
+if [ ! -r "$ENV_SCRIPT" ]; then
+    printf 'AppImage is missing %s\n' "$ENV_SCRIPT" >&2
+    exit 1
+fi
+
+. "$ENV_SCRIPT"
+hdhr_export_runtime_env || true
+
+if [ ! -x "$MAIN_BIN" ]; then
+    printf 'AppImage is missing the main launcher: %s\n' "$MAIN_BIN" >&2
+    exit 1
+fi
+
+exec "$MAIN_BIN" "$@"
