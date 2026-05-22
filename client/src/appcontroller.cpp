@@ -1,6 +1,8 @@
 #include "appcontroller.h"
+#include "backendlaunchconfig.h"
 
 #include <QCoreApplication>
+#include <QProcessEnvironment>
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -259,9 +261,16 @@ void AppController::startBundledBackend()
         return;
     }
 
+    const auto launchDecision = resolveBackendLaunchDecision(m_backendBaseUrl);
+    if (!launchDecision.canAutoStart) {
+        setLaunchFailure(launchDecision.errorMessage);
+        return;
+    }
+
     m_backendProcess = new QProcess(this);
     auto environment = QProcessEnvironment::systemEnvironment();
     environment.insert(QStringLiteral("HDHR_BACKEND_PLAYER_MODE"), QStringLiteral("client"));
+    environment.insert(QStringLiteral("HDHR_BACKEND_BIND"), launchDecision.bindAddress);
     m_backendProcess->setProcessEnvironment(environment);
     m_backendProcess->setProgram(program);
     m_backendProcess->start();

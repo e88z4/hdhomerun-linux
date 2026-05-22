@@ -32,7 +32,12 @@ Pane {
         player.stop()
     }
 
-    onShellPhaseChanged: syncPlayback()
+    onShellPhaseChanged: {
+        if (shellPhase === "playback_loading") {
+            surfaceErrorText = ""
+        }
+        syncPlayback()
+    }
     onPlaybackUrlChanged: {
         surfaceErrorText = ""
         syncPlayback()

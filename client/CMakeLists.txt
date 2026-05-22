@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Multimedia Network Quick QuickControls2)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Multimedia Network Quick QuickControls2 Test)
 
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0004 NEW)
@@ -18,6 +18,8 @@ qt_add_executable(hdhomerun-linux-player
     src/main.cpp
     src/appcontroller.cpp
     src/appcontroller.h
+    src/backendlaunchconfig.cpp
+    src/backendlaunchconfig.h
 )
 
 qt_add_qml_module(hdhomerun-linux-player
@@ -45,6 +47,17 @@ install(TARGETS hdhomerun-linux-player
 )
 
 if(BUILD_TESTING)
+    qt_add_executable(backendlaunchconfig-tests
+        src/backendlaunchconfig.cpp
+        src/backendlaunchconfig.h
+        tests/backendlaunchconfig_tests.cpp
+    )
+    target_include_directories(backendlaunchconfig-tests PRIVATE src)
+    target_link_libraries(backendlaunchconfig-tests
+        PRIVATE
+        Qt6::Network
+        Qt6::Test
+    )
     add_test(
         NAME client-offscreen-smoke
         COMMAND ${CMAKE_COMMAND} -E env
@@ -54,5 +67,7 @@ if(BUILD_TESTING)
             HDHR_CLIENT_EXIT_AFTER_MS=750
             $<TARGET_FILE:hdhomerun-linux-player>
     )
+    add_test(NAME backendlaunchconfig-tests COMMAND backendlaunchconfig-tests)
     set_tests_properties(client-offscreen-smoke PROPERTIES TIMEOUT 10)
+    set_tests_properties(backendlaunchconfig-tests PROPERTIES TIMEOUT 10)
 endif()
