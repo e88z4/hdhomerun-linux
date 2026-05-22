@@ -49,6 +49,7 @@ public:
     Q_INVOKABLE void initialize();
     Q_INVOKABLE void selectDeviceIndex(int index);
     Q_INVOKABLE void playChannel(const QString &channelRef);
+    Q_INVOKABLE void playAdjacentChannel(int direction);
     Q_INVOKABLE void retryPlayback();
     Q_INVOKABLE void toggleDiagnostics();
 

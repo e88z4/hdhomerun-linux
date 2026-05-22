@@ -20,6 +20,8 @@ qt_add_executable(hdhomerun-linux-player
     src/appcontroller.h
     src/backendlaunchconfig.cpp
     src/backendlaunchconfig.h
+    src/channelnavigation.cpp
+    src/channelnavigation.h
 )
 
 qt_add_qml_module(hdhomerun-linux-player
@@ -58,6 +60,17 @@ if(BUILD_TESTING)
         Qt6::Network
         Qt6::Test
     )
+    qt_add_executable(channelnavigation-tests
+        src/channelnavigation.cpp
+        src/channelnavigation.h
+        tests/channelnavigation_tests.cpp
+    )
+    target_include_directories(channelnavigation-tests PRIVATE src)
+    target_link_libraries(channelnavigation-tests
+        PRIVATE
+        Qt6::Core
+        Qt6::Test
+    )
     add_test(
         NAME client-offscreen-smoke
         COMMAND ${CMAKE_COMMAND} -E env
@@ -68,6 +81,8 @@ if(BUILD_TESTING)
             $<TARGET_FILE:hdhomerun-linux-player>
     )
     add_test(NAME backendlaunchconfig-tests COMMAND backendlaunchconfig-tests)
+    add_test(NAME channelnavigation-tests COMMAND channelnavigation-tests)
     set_tests_properties(client-offscreen-smoke PROPERTIES TIMEOUT 10)
     set_tests_properties(backendlaunchconfig-tests PROPERTIES TIMEOUT 10)
+    set_tests_properties(channelnavigation-tests PROPERTIES TIMEOUT 10)
 endif()

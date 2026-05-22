@@ -924,3 +924,21 @@
   - Flatpak headless package verification no longer exits with signal 11 and now completes with exit code 0
   - Debian extract-run and AppImage extract-and-run verification continue to pass after the client runtime changes
   - the current package artifacts in dist/ are aligned with the validated source state
+
+## 2026-05-22T02:10:00Z
+- **Stage**: Client Shell Interaction Upgrade - Unit 4
+- **Implementation Changes**:
+  - added fullscreen shell controls in client/qml/Main.qml with `F` to toggle fullscreen, `Esc` to exit fullscreen, a header fullscreen button, and a fullscreen-only exit button
+  - updated the fullscreen layout so playback can take over the shell while the channel rail and diagnostics drawer are hidden
+  - added AppController keyboard channel navigation through a new adjacent-playable-channel helper that skips unavailable entries and wraps across the playable list
+  - added client/tests/channelnavigation_tests.cpp and wired it into client/CMakeLists.txt
+  - recorded the feature execution slice in aidlc-docs/construction/plans/unit-4-fullscreen-hotkeys-plan.md
+- **Validation Executed**:
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - cargo test --manifest-path backend/Cargo.toml --quiet
+- **Outcome**:
+  - the desktop client now supports fullscreen playback and keyboard-based previous/next channel switching
+  - channel navigation skips non-playable lineup entries and wraps across the playable channel set
+  - client smoke coverage and backend regression coverage remain green after the feature addition

@@ -9,6 +9,7 @@ This directory contains the Qt/QML desktop application used by HDHomeRun Linux P
 - restores device and playback context from the backend
 - renders embedded live playback with Qt Multimedia
 - shows tuner diagnostics alongside playback
+- supports fullscreen playback and keyboard channel switching
 
 ## User-Facing Behavior
 
@@ -48,3 +49,4 @@ The built client binary is written to `build/client/hdhomerun-linux-player`.
 
 - packaged playback defaults to embedded in-window playback; no external `mpv` install is required for normal package use
 - the client now validates local auto-start URL overrides so a custom loopback URL and port can stay aligned with the backend bind address
+- keyboard defaults now use `F` for fullscreen toggle, `Esc` to leave fullscreen, and `Up` / `Down` to move across the playable channel list

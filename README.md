@@ -10,6 +10,8 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 - automatic device discovery on the local network
 - channel rail for quick switching
 - tuner diagnostics in a side drawer
+- fullscreen playback mode for a larger viewing surface
+- keyboard shortcuts for fullscreen toggle and channel surfing
 - packaged distribution for Debian, AppImage, and Flatpak
 
 ## Current Scope
@@ -65,6 +67,13 @@ On first launch the app should:
 - ask you to select a device if more than one tuner is available or no previous device is remembered
 - load the channel lineup for the selected device
 - start playback in the center stage when you choose a playable channel
+
+## Keyboard Shortcuts
+
+- `F`: toggle fullscreen mode
+- `Esc`: exit fullscreen mode
+- `Up`: previous playable channel
+- `Down`: next playable channel
 
 ## Requirements
 

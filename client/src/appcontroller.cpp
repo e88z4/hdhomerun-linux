@@ -1,5 +1,6 @@
 #include "appcontroller.h"
 #include "backendlaunchconfig.h"
+#include "channelnavigation.h"
 
 #include <QCoreApplication>
 #include <QProcessEnvironment>
@@ -143,6 +144,16 @@ void AppController::retryPlayback()
             setShellPhase(QStringLiteral("playback_failed"));
             setStageFailure(message);
         });
+}
+
+void AppController::playAdjacentChannel(int direction)
+{
+    const auto channelRef = findAdjacentPlayableChannelRef(m_channels, m_currentChannelRef, direction);
+    if (channelRef.isEmpty()) {
+        return;
+    }
+
+    playChannel(channelRef);
 }
 
 void AppController::toggleDiagnostics()

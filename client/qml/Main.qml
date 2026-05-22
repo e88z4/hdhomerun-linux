@@ -8,11 +8,48 @@ import "components"
 ApplicationWindow {
     id: window
 
+    property bool fullscreenMode: visibility === Window.FullScreen
+
+    function toggleFullscreen() {
+        visibility = fullscreenMode ? Window.Windowed : Window.FullScreen
+    }
+
+    function exitFullscreen() {
+        if (fullscreenMode) {
+            visibility = Window.Windowed
+        }
+    }
+
     width: 1440
     height: 900
     visible: true
     title: "HDHomeRun Linux Player"
     color: "#08131c"
+
+    Shortcut {
+        sequence: "F"
+        context: Qt.ApplicationShortcut
+        onActivated: window.toggleFullscreen()
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        context: Qt.ApplicationShortcut
+        enabled: window.fullscreenMode
+        onActivated: window.exitFullscreen()
+    }
+
+    Shortcut {
+        sequence: "Up"
+        context: Qt.ApplicationShortcut
+        onActivated: appController.playAdjacentChannel(-1)
+    }
+
+    Shortcut {
+        sequence: "Down"
+        context: Qt.ApplicationShortcut
+        onActivated: appController.playAdjacentChannel(1)
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -24,6 +61,7 @@ ApplicationWindow {
     }
 
     header: ToolBar {
+        visible: !window.fullscreenMode
         padding: 14
         background: Rectangle {
             color: "#0d1b26"
@@ -75,7 +113,23 @@ ApplicationWindow {
                 text: appController.diagnosticsExpanded ? "Hide Diagnostics" : "Show Diagnostics"
                 onClicked: appController.toggleDiagnostics()
             }
+
+            Button {
+                text: "Fullscreen"
+                onClicked: window.toggleFullscreen()
+            }
         }
+    }
+
+    Button {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 18
+        anchors.rightMargin: 18
+        z: 10
+        visible: window.fullscreenMode
+        text: "Exit Fullscreen"
+        onClicked: window.exitFullscreen()
     }
 
     RowLayout {
@@ -84,6 +138,7 @@ ApplicationWindow {
         spacing: 18
 
         ChannelRail {
+            visible: !window.fullscreenMode
             Layout.preferredWidth: 300
             Layout.fillHeight: true
             channels: appController.channels
@@ -111,6 +166,7 @@ ApplicationWindow {
         }
 
         DiagnosticsDrawer {
+            visible: !window.fullscreenMode
             Layout.preferredWidth: appController.diagnosticsExpanded ? 320 : 52
             Layout.fillHeight: true
             expanded: appController.diagnosticsExpanded
