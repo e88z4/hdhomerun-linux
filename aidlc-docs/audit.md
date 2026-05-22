@@ -942,3 +942,18 @@
   - the desktop client now supports fullscreen playback and keyboard-based previous/next channel switching
   - channel navigation skips non-playable lineup entries and wraps across the playable channel set
   - client smoke coverage and backend regression coverage remain green after the feature addition
+
+## 2026-05-22T03:24:23Z
+- **Stage**: Client Playback Controls Upgrade - Unit 4
+- **Implementation Changes**:
+  - added client-side volume controls in client/qml/Main.qml and client/qml/components/PlaybackStage.qml, including visible `Vol -` and `Vol +` buttons in windowed mode and matching controls in the fullscreen overlay
+  - remapped keyboard shortcuts so `Up` and `Down` adjust volume while `Left` and `Right` move across playable channels
+  - updated the fullscreen overlay hint text and volume badge to reflect the new control model
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-4-volume-channel-remap-plan.md
+- **Validation Executed**:
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+- **Outcome**:
+  - embedded playback now supports user-facing volume control without changing backend-owned playback state
+  - channel surfing remains keyboard-driven, but now uses left/right semantics that do not conflict with volume adjustment
+  - client build and smoke-oriented test coverage remain green after the control remap

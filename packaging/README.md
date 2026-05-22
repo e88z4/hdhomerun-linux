@@ -53,6 +53,22 @@ The generated package artifacts are:
 
 ## Build Commands
 
+Preferred end-to-end distribution pipeline:
+
+```sh
+./packaging/build-and-verify-dist.sh
+```
+
+This command:
+
+- rebuilds the dev client used during local iteration
+- reruns the client and backend tests
+- rebuilds the release client and backend
+- rebuilds Debian, AppImage, and Flatpak artifacts
+- verifies packaged startup for Debian, AppImage, and Flatpak
+
+Lower-level packaging commands:
+
 ```sh
 cargo build --manifest-path backend/Cargo.toml --release
 cmake -S client -B build/client-release -G Ninja -DCMAKE_BUILD_TYPE=Release

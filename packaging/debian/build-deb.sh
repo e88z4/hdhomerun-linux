@@ -11,6 +11,10 @@ CLIENT_BIN="${HDHR_CLIENT_BIN:-$ROOT_DIR/build/client-release/hdhomerun-linux-pl
 BACKEND_BIN="${HDHR_BACKEND_BIN:-$ROOT_DIR/backend/target/release/hdhomerun-backend}"
 PACKAGE_FILE="$OUTPUT_DIR/${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb"
 
+if [ "${HDHR_SKIP_BUILD:-0}" != "1" ]; then
+    sh "$ROOT_DIR/packaging/common/build-release-binaries.sh"
+fi
+
 if [ ! -x "$CLIENT_BIN" ]; then
     printf 'Missing client binary: %s\n' "$CLIENT_BIN" >&2
     exit 1

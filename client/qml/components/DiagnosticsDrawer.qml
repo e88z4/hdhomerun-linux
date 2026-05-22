@@ -45,9 +45,10 @@ Pane {
                     radius: 18
                     color: "#142a39"
                     border.color: "#29536a"
-                    implicitHeight: 86
+                    implicitHeight: summaryColumn.implicitHeight + 28
 
                     ColumnLayout {
+                        id: summaryColumn
                         anchors.fill: parent
                         anchors.margins: 14
 
@@ -59,6 +60,7 @@ Pane {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: root.summaryText
                             color: "#a8c0d2"
                             wrapMode: Text.WordWrap
@@ -75,23 +77,28 @@ Pane {
                         radius: 16
                         color: index === 0 ? "#183648" : "#132735"
                         border.color: index === 0 ? "#66c7ff" : "#22465e"
-                        implicitHeight: 70
+                        implicitHeight: detailColumn.implicitHeight + 24
 
                         ColumnLayout {
+                            id: detailColumn
                             anchors.fill: parent
                             anchors.margins: 12
 
                             Label {
+                                Layout.fillWidth: true
                                 text: modelData.title
                                 color: "#f2f7fb"
                                 font.family: "IBM Plex Sans"
                                 font.bold: true
+                                wrapMode: Text.WordWrap
                             }
 
                             Label {
+                                Layout.fillWidth: true
                                 text: modelData.detail
                                 color: "#9eb6c6"
                                 font.family: "IBM Plex Sans"
+                                wrapMode: Text.WordWrap
                             }
                         }
                     }

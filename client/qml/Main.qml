@@ -8,9 +8,17 @@ import "components"
 ApplicationWindow {
     id: window
 
+    property int overlayPulse: 0
     property bool fullscreenMode: visibility === Window.FullScreen
 
+    function bumpOverlay() {
+        overlayPulse += 1
+    }
+
     function toggleFullscreen() {
+        if (!fullscreenMode) {
+            bumpOverlay()
+        }
         visibility = fullscreenMode ? Window.Windowed : Window.FullScreen
     }
 
@@ -20,8 +28,12 @@ ApplicationWindow {
         }
     }
 
-    width: 1440
-    height: 900
+    minimumWidth: 1180
+    minimumHeight: 720
+    width: Math.min(Math.max(1440, Math.round(Screen.width * 0.88)), Math.max(960, Screen.width - 80))
+    height: Math.min(Math.max(900, Math.round(Screen.height * 0.86)), Math.max(640, Screen.height - 80))
+    x: Math.max(0, Math.round((Screen.width - width) / 2))
+    y: Math.max(0, Math.round((Screen.height - height) / 2))
     visible: true
     title: "HDHomeRun Linux Player"
     color: "#08131c"
@@ -42,13 +54,37 @@ ApplicationWindow {
     Shortcut {
         sequence: "Up"
         context: Qt.ApplicationShortcut
-        onActivated: appController.playAdjacentChannel(-1)
+        onActivated: {
+            window.bumpOverlay()
+            playbackStage.adjustVolume(0.05)
+        }
     }
 
     Shortcut {
         sequence: "Down"
         context: Qt.ApplicationShortcut
-        onActivated: appController.playAdjacentChannel(1)
+        onActivated: {
+            window.bumpOverlay()
+            playbackStage.adjustVolume(-0.05)
+        }
+    }
+
+    Shortcut {
+        sequence: "Right"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            window.bumpOverlay()
+            appController.playAdjacentChannel(1)
+        }
+    }
+
+    Shortcut {
+        sequence: "Left"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            window.bumpOverlay()
+            appController.playAdjacentChannel(-1)
+        }
     }
 
     Rectangle {
@@ -114,6 +150,24 @@ ApplicationWindow {
                 onClicked: appController.toggleDiagnostics()
             }
 
+            Label {
+                text: "Volume " + playbackStage.volumePercent + "%"
+                color: "#d7e5ef"
+                font.family: "IBM Plex Sans"
+            }
+
+            Button {
+                text: "Vol -"
+                enabled: playbackStage.volumeControlEnabled
+                onClicked: playbackStage.adjustVolume(-0.05)
+            }
+
+            Button {
+                text: "Vol +"
+                enabled: playbackStage.volumeControlEnabled
+                onClicked: playbackStage.adjustVolume(0.05)
+            }
+
             Button {
                 text: "Fullscreen"
                 onClicked: window.toggleFullscreen()
@@ -121,25 +175,15 @@ ApplicationWindow {
         }
     }
 
-    Button {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: 18
-        anchors.rightMargin: 18
-        z: 10
-        visible: window.fullscreenMode
-        text: "Exit Fullscreen"
-        onClicked: window.exitFullscreen()
-    }
-
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 18
+        anchors.margins: window.fullscreenMode ? 0 : 18
+        spacing: window.fullscreenMode ? 0 : 18
 
         ChannelRail {
             visible: !window.fullscreenMode
-            Layout.preferredWidth: 300
+            Layout.preferredWidth: window.fullscreenMode ? 0 : 300
+            Layout.maximumWidth: window.fullscreenMode ? 0 : Number.POSITIVE_INFINITY
             Layout.fillHeight: true
             channels: appController.channels
             currentChannelRef: appController.currentChannelRef
@@ -152,8 +196,11 @@ ApplicationWindow {
         }
 
         PlaybackStage {
+            id: playbackStage
             Layout.fillWidth: true
             Layout.fillHeight: true
+            immersiveMode: window.fullscreenMode
+            overlayPulse: window.overlayPulse
             shellPhase: appController.shellPhase
             currentTitle: appController.stageTitle
             currentSubtitle: appController.stageSubtitle
@@ -162,12 +209,14 @@ ApplicationWindow {
             playbackUrl: appController.playbackUrl
             embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
             retryEnabled: appController.shellPhase === "playback_failed"
+            onExitFullscreenRequested: window.exitFullscreen()
             onRetryRequested: appController.retryPlayback()
         }
 
         DiagnosticsDrawer {
             visible: !window.fullscreenMode
-            Layout.preferredWidth: appController.diagnosticsExpanded ? 320 : 52
+            Layout.preferredWidth: window.fullscreenMode ? 0 : (appController.diagnosticsExpanded ? 320 : 52)
+            Layout.maximumWidth: window.fullscreenMode ? 0 : Number.POSITIVE_INFINITY
             Layout.fillHeight: true
             expanded: appController.diagnosticsExpanded
             summaryText: appController.diagnosticsSummary

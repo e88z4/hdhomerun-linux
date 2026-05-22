@@ -10,6 +10,10 @@ BUNDLE_FILE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer.flatpak"
 CLIENT_BIN="${HDHR_CLIENT_BIN:-$ROOT_DIR/build/client-release/hdhomerun-linux-player}"
 BACKEND_BIN="${HDHR_BACKEND_BIN:-$ROOT_DIR/backend/target/release/hdhomerun-backend}"
 
+if [ "${HDHR_SKIP_BUILD:-0}" != "1" ]; then
+    sh "$ROOT_DIR/packaging/common/build-release-binaries.sh"
+fi
+
 if [ ! -x "$CLIENT_BIN" ]; then
     printf 'Missing client binary: %s\n' "$CLIENT_BIN" >&2
     exit 1

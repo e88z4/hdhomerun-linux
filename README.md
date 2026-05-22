@@ -11,7 +11,8 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 - channel rail for quick switching
 - tuner diagnostics in a side drawer
 - fullscreen playback mode for a larger viewing surface
-- keyboard shortcuts for fullscreen toggle and channel surfing
+- keyboard shortcuts for fullscreen, channel surfing, and volume control
+- visible volume buttons in both windowed and fullscreen playback modes
 - packaged distribution for Debian, AppImage, and Flatpak
 
 ## Current Scope
@@ -72,8 +73,10 @@ On first launch the app should:
 
 - `F`: toggle fullscreen mode
 - `Esc`: exit fullscreen mode
-- `Up`: previous playable channel
-- `Down`: next playable channel
+- `Up`: volume up
+- `Down`: volume down
+- `Right`: next playable channel
+- `Left`: previous playable channel
 
 ## Requirements
 
