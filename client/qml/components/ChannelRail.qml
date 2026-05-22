@@ -5,30 +5,69 @@ import QtQuick.Layouts
 Pane {
     id: root
 
+    property bool compactMode: false
     required property var channels
     required property string currentChannelRef
     signal channelActivated(string channelRef, string guideNumber, string guideName, string availability)
 
-    padding: 16
+    function currentChannelIndex() {
+        for (let index = 0; index < channels.length; index += 1) {
+            const channel = channels[index]
+            if (channel.channelRef === currentChannelRef) {
+                return index
+            }
+        }
+
+        return -1
+    }
+
+    function ensureCurrentVisible() {
+        const index = currentChannelIndex()
+        if (index < 0) {
+            return
+        }
+
+        channelList.positionViewAtIndex(index, ListView.Contain)
+    }
+
+    onCurrentChannelRefChanged: ensureCurrentVisible()
+    onChannelsChanged: ensureCurrentVisible()
+
+    padding: root.compactMode ? 12 : 16
     background: Rectangle {
-        radius: 28
+        radius: root.compactMode ? 22 : 28
         color: "#0d1a24"
         border.color: "#183447"
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 14
+        spacing: root.compactMode ? 10 : 14
 
-        Label {
-            text: "Channels"
-            color: "#f2f7fb"
-            font.family: "IBM Plex Sans"
-            font.pixelSize: 20
-            font.bold: true
+        RowLayout {
+            Layout.fillWidth: true
+
+            Label {
+                text: "Channels"
+                color: "#f2f7fb"
+                font.family: "IBM Plex Sans"
+                font.pixelSize: root.compactMode ? 17 : 20
+                font.bold: true
+            }
+
+            Label {
+                visible: root.compactMode
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignRight
+                text: "Scroll or use Left/Right"
+                color: "#8ea7b9"
+                font.family: "IBM Plex Sans"
+                font.pixelSize: 13
+            }
         }
 
         Label {
+            visible: !root.compactMode
             text: "Persistent rail for browsing and quick switching"
             color: "#8ea7b9"
             wrapMode: Text.WordWrap
@@ -36,15 +75,26 @@ Pane {
         }
 
         ListView {
+            id: channelList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             spacing: 10
+            orientation: root.compactMode ? ListView.Horizontal : ListView.Vertical
+            boundsBehavior: Flickable.StopAtBounds
             model: root.channels
 
+            ScrollBar.horizontal: ScrollBar {
+                visible: root.compactMode
+            }
+
+            ScrollBar.vertical: ScrollBar {
+                visible: !root.compactMode
+            }
+
             delegate: Button {
-                width: ListView.view.width
-                height: 72
+                width: root.compactMode ? 220 : ListView.view.width
+                height: root.compactMode ? Math.max(84, ListView.view.height - 12) : 72
                 padding: 0
                 background: Rectangle {
                     radius: 20
@@ -88,4 +138,6 @@ Pane {
             }
         }
     }
+
+    Component.onCompleted: ensureCurrentVisible()
 }

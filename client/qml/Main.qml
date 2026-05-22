@@ -145,32 +145,10 @@ ApplicationWindow {
                 }
             }
 
-            Button {
-                text: appController.diagnosticsExpanded ? "Hide Diagnostics" : "Show Diagnostics"
+            IconButton {
+                iconKind: "diagnostics"
+                toolTipText: appController.diagnosticsExpanded ? "Hide diagnostics" : "Show diagnostics"
                 onClicked: appController.toggleDiagnostics()
-            }
-
-            Label {
-                text: "Volume " + playbackStage.volumePercent + "%"
-                color: "#d7e5ef"
-                font.family: "IBM Plex Sans"
-            }
-
-            Button {
-                text: "Vol -"
-                enabled: playbackStage.volumeControlEnabled
-                onClicked: playbackStage.adjustVolume(-0.05)
-            }
-
-            Button {
-                text: "Vol +"
-                enabled: playbackStage.volumeControlEnabled
-                onClicked: playbackStage.adjustVolume(0.05)
-            }
-
-            Button {
-                text: "Fullscreen"
-                onClicked: window.toggleFullscreen()
             }
         }
     }
@@ -180,37 +158,48 @@ ApplicationWindow {
         anchors.margins: window.fullscreenMode ? 0 : 18
         spacing: window.fullscreenMode ? 0 : 18
 
-        ChannelRail {
-            visible: !window.fullscreenMode
-            Layout.preferredWidth: window.fullscreenMode ? 0 : 300
-            Layout.maximumWidth: window.fullscreenMode ? 0 : Number.POSITIVE_INFINITY
-            Layout.fillHeight: true
-            channels: appController.channels
-            currentChannelRef: appController.currentChannelRef
-            onChannelActivated: function(channelRef, guideNumber, guideName, availability) {
-                if (availability === "restricted") {
-                    return
-                }
-                appController.playChannel(channelRef)
-            }
-        }
-
-        PlaybackStage {
-            id: playbackStage
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            immersiveMode: window.fullscreenMode
-            overlayPulse: window.overlayPulse
-            shellPhase: appController.shellPhase
-            currentTitle: appController.stageTitle
-            currentSubtitle: appController.stageSubtitle
-            warningText: appController.stageWarning
-            failureText: appController.stageFailure
-            playbackUrl: appController.playbackUrl
-            embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
-            retryEnabled: appController.shellPhase === "playback_failed"
-            onExitFullscreenRequested: window.exitFullscreen()
-            onRetryRequested: appController.retryPlayback()
+
+            spacing: window.fullscreenMode ? 0 : 14
+
+            PlaybackStage {
+                id: playbackStage
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                immersiveMode: window.fullscreenMode
+                fullscreenMode: window.fullscreenMode
+                overlayPulse: window.overlayPulse
+                shellPhase: appController.shellPhase
+                currentTitle: appController.stageTitle
+                currentSubtitle: appController.stageSubtitle
+                warningText: appController.stageWarning
+                failureText: appController.stageFailure
+                playbackUrl: appController.playbackUrl
+                embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                retryEnabled: appController.shellPhase === "playback_failed"
+                onExitFullscreenRequested: window.exitFullscreen()
+                onToggleFullscreenRequested: window.toggleFullscreen()
+                onRetryRequested: appController.retryPlayback()
+            }
+
+            ChannelRail {
+                visible: !window.fullscreenMode
+                Layout.fillWidth: true
+                Layout.preferredHeight: 170
+                Layout.minimumHeight: 150
+                Layout.maximumHeight: 190
+                compactMode: true
+                channels: appController.channels
+                currentChannelRef: appController.currentChannelRef
+                onChannelActivated: function(channelRef, guideNumber, guideName, availability) {
+                    if (availability === "restricted") {
+                        return
+                    }
+                    appController.playChannel(channelRef)
+                }
+            }
         }
 
         DiagnosticsDrawer {

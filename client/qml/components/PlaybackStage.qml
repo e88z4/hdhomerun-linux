@@ -7,6 +7,7 @@ Pane {
     id: root
 
     required property bool immersiveMode
+    required property bool fullscreenMode
     required property int overlayPulse
     required property string shellPhase
     required property string currentTitle
@@ -17,22 +18,19 @@ Pane {
     required property bool embeddedPlaybackEnabled
     required property bool retryEnabled
     signal exitFullscreenRequested()
+    signal toggleFullscreenRequested()
     signal retryRequested()
 
     property string surfaceErrorText: ""
+    property bool controlOverlayVisible: false
     property bool immersiveOverlayVisible: false
     property real volumeLevel: 1.0
     readonly property int volumePercent: Math.round(volumeLevel * 100)
     readonly property bool volumeControlEnabled: embeddedPlaybackEnabled
 
     function revealOverlay() {
-        if (!immersiveMode) {
-            immersiveOverlayVisible = false
-            overlayHideTimer.stop()
-            return
-        }
-
-        immersiveOverlayVisible = true
+        controlOverlayVisible = true
+        immersiveOverlayVisible = immersiveMode
         overlayHideTimer.restart()
     }
 
@@ -79,12 +77,16 @@ Pane {
     onCurrentSubtitleChanged: revealOverlay()
     onWarningTextChanged: revealOverlay()
     onFailureTextChanged: revealOverlay()
+    onVolumeLevelChanged: revealOverlay()
 
     Timer {
         id: overlayHideTimer
         interval: 5000
         repeat: false
-        onTriggered: root.immersiveOverlayVisible = false
+        onTriggered: {
+            root.controlOverlayVisible = false
+            root.immersiveOverlayVisible = false
+        }
     }
 
     padding: immersiveMode ? 0 : 22
@@ -208,8 +210,9 @@ Pane {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
                         hoverEnabled: true
-                        enabled: root.immersiveMode
+                        enabled: true
                         onPositionChanged: root.revealOverlay()
+                        onEntered: root.revealOverlay()
                     }
 
                     Canvas {
@@ -300,38 +303,11 @@ Pane {
                             anchors.margins: 24
                             spacing: 10
 
-                            Button {
+                            IconButton {
                                 visible: root.retryEnabled
-                                text: "Retry"
+                                iconKind: "retry"
+                                toolTipText: "Retry playback"
                                 onClicked: root.retryRequested()
-                            }
-
-                            Rectangle {
-                                radius: 16
-                                color: "#8c09141d"
-                                border.color: "#324f63"
-                                implicitWidth: 96
-                                implicitHeight: 40
-
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: "Vol " + root.volumePercent + "%"
-                                    color: "#eff7fb"
-                                    font.family: "IBM Plex Sans"
-                                    font.bold: true
-                                }
-                            }
-
-                            Button {
-                                enabled: root.volumeControlEnabled
-                                text: "Vol -"
-                                onClicked: root.adjustVolume(-0.05)
-                            }
-
-                            Button {
-                                enabled: root.volumeControlEnabled
-                                text: "Vol +"
-                                onClicked: root.adjustVolume(0.05)
                             }
 
                             Rectangle {
@@ -350,9 +326,102 @@ Pane {
                                 }
                             }
 
-                            Button {
-                                text: "Exit Fullscreen"
-                                onClicked: root.exitFullscreenRequested()
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 24
+                            implicitHeight: 68
+                            radius: 20
+                            color: "#be09131d"
+                            border.color: "#304d61"
+                            visible: root.controlOverlayVisible || volumeSlider.pressed
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: 34
+                                radius: 20
+                                color: "#00000000"
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: "#00000000" }
+                                    GradientStop { position: 1.0; color: "#35000000" }
+                                }
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 16
+                                anchors.rightMargin: 16
+                                spacing: 14
+
+                                IconButton {
+                                    iconKind: "volume-down"
+                                    toolTipText: "Volume down (Down key)"
+                                    enabled: root.volumeControlEnabled
+                                    onClicked: root.adjustVolume(-0.05)
+                                }
+
+                                Slider {
+                                    id: volumeSlider
+                                    Layout.fillWidth: true
+                                    enabled: root.volumeControlEnabled
+                                    from: 0.0
+                                    to: 1.0
+                                    value: root.volumeLevel
+                                    onMoved: root.volumeLevel = value
+                                    onPressedChanged: if (pressed) root.revealOverlay()
+
+                                    background: Rectangle {
+                                        x: volumeSlider.leftPadding
+                                        y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
+                                        width: volumeSlider.availableWidth
+                                        height: 6
+                                        radius: 3
+                                        color: "#274356"
+
+                                        Rectangle {
+                                            width: volumeSlider.visualPosition * parent.width
+                                            height: parent.height
+                                            radius: parent.radius
+                                            color: "#ff4e45"
+                                        }
+                                    }
+
+                                    handle: Rectangle {
+                                        x: volumeSlider.leftPadding + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
+                                        y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
+                                        width: 14
+                                        height: 14
+                                        radius: 7
+                                        color: volumeSlider.pressed ? "#ffffff" : "#ffe6e4"
+                                        border.color: "#ff4e45"
+                                    }
+                                }
+
+                                Label {
+                                    text: root.volumePercent + "%"
+                                    color: "#eff7fb"
+                                    font.family: "IBM Plex Sans"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                }
+
+                                IconButton {
+                                    iconKind: "volume-up"
+                                    toolTipText: "Volume up (Up key)"
+                                    enabled: root.volumeControlEnabled
+                                    onClicked: root.adjustVolume(0.05)
+                                }
+
+                                IconButton {
+                                    iconKind: root.fullscreenMode ? "fullscreen-exit" : "fullscreen"
+                                    toolTipText: root.fullscreenMode ? "Return to windowed mode (F or Esc)" : "Enter fullscreen (F)"
+                                    onClicked: root.toggleFullscreenRequested()
+                                }
                             }
                         }
 
@@ -416,13 +485,17 @@ Pane {
                 font.family: "IBM Plex Sans"
             }
 
-            Button {
+            IconButton {
                 visible: root.retryEnabled
-                text: "Retry"
+                iconKind: "retry"
+                toolTipText: "Retry playback"
                 onClicked: root.retryRequested()
             }
         }
     }
 
-    Component.onCompleted: syncPlayback()
+    Component.onCompleted: {
+        syncPlayback()
+        revealOverlay()
+    }
 }

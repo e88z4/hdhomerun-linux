@@ -8,11 +8,11 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 
 - live TV playback for playable HDHomeRun channels
 - automatic device discovery on the local network
-- channel rail for quick switching
+- bottom scrollable channel strip for quick switching
 - tuner diagnostics in a side drawer
 - fullscreen playback mode for a larger viewing surface
 - keyboard shortcuts for fullscreen, channel surfing, and volume control
-- visible volume buttons in both windowed and fullscreen playback modes
+- YouTube-style overlay playback controls with a slider-based volume UI in both windowed and fullscreen modes
 - packaged distribution for Debian, AppImage, and Flatpak
 
 ## Current Scope

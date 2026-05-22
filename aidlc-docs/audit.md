@@ -957,3 +957,50 @@
   - embedded playback now supports user-facing volume control without changing backend-owned playback state
   - channel surfing remains keyboard-driven, but now uses left/right semantics that do not conflict with volume adjustment
   - client build and smoke-oriented test coverage remain green after the control remap
+
+## 2026-05-22T20:43:59Z
+- **Stage**: Client Control Surface Refresh - Unit 4
+- **Implementation Changes**:
+  - added a reusable icon-only control component in client/qml/components/IconButton.qml using packaged-safe canvas-drawn vector icons
+  - replaced text-only shell and fullscreen overlay control buttons with icon buttons for diagnostics, volume, retry, fullscreen enter, and fullscreen exit actions
+  - added tooltips so the icon-only controls remain self-describing without relying on visible button text
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-4-icon-controls-plan.md
+- **Validation Executed**:
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - sh ./packaging/build-and-verify-dist.sh
+- **Outcome**:
+  - the client control surface now reads as icon-driven instead of text-button driven while preserving the same behavior
+  - the icon approach remains consistent across dev and packaged environments because it does not depend on host icon themes
+  - client and distribution validation remain green after the cosmetic refresh
+
+## 2026-05-22T20:43:59Z
+- **Stage**: Client Channel Layout Refresh - Unit 4
+- **Implementation Changes**:
+  - moved the available-channel selector out of the left-side rail and into a compact bottom strip under the playback stage in client/qml/Main.qml
+  - updated client/qml/components/ChannelRail.qml to support a horizontal compact mode with flickable scrolling, bottom-strip sizing, and current-channel auto-scroll behavior
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-4-bottom-channel-strip-plan.md
+- **Validation Executed**:
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - sh ./packaging/build-and-verify-dist.sh
+- **Outcome**:
+  - the shell now gives more width back to playback by removing the large left rail
+  - available channels are now browsed through a bottom horizontal strip that matches the left/right keyboard switching model
+  - packaged and dev builds remain aligned after the layout refresh
+
+## 2026-05-22T20:43:59Z
+- **Stage**: Client Playback Overlay Refresh - Unit 4
+- **Implementation Changes**:
+  - moved volume and fullscreen controls out of the header and into a YouTube-style overlay control bar inside client/qml/components/PlaybackStage.qml
+  - replaced the volume button pair with an overlay slider while keeping `Up` and `Down` keyboard bindings for volume changes
+  - updated the fullscreen control so the same overlay icon toggles between fullscreen and windowed mode in both layouts
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-4-overlay-controls-plan.md
+- **Validation Executed**:
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - sh ./packaging/build-and-verify-dist.sh
+- **Outcome**:
+  - playback controls now behave like an overlay instead of a header toolbar feature
+  - the same control model works in windowed and fullscreen playback, which reduces layout switching friction
+  - keyboard and pointer-driven control paths remain aligned after the cosmetic refactor

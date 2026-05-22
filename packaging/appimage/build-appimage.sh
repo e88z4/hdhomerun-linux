@@ -23,6 +23,7 @@ if [ ! -x "$BACKEND_BIN" ]; then
 fi
 
 rm -rf "$APPDIR"
+rm -f "$OUTPUT_APPIMAGE"
 mkdir -p \
     "$APPDIR/usr/bin" \
     "$APPDIR/usr/lib/hdhomerun-linux-player" \

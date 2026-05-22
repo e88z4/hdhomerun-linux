@@ -10,6 +10,9 @@ This directory contains the Qt/QML desktop application used by HDHomeRun Linux P
 - renders embedded live playback with Qt Multimedia
 - shows tuner diagnostics alongside playback
 - supports fullscreen playback, keyboard channel switching, and client-side volume control
+- presents playback controls through icon-based shell and overlay actions with tooltips
+- places the available-channel selector in a compact bottom strip under playback instead of a dedicated left rail
+- uses a playback-overlay control bar for volume and fullscreen actions in both windowed and fullscreen modes
 
 ## User-Facing Behavior
 

@@ -31,6 +31,7 @@ qt_add_qml_module(hdhomerun-linux-player
     QML_FILES
         qml/Main.qml
         qml/components/ChannelRail.qml
+        qml/components/IconButton.qml
         qml/components/PlaybackStage.qml
         qml/components/DiagnosticsDrawer.qml
 )
