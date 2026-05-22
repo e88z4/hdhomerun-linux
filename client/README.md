@@ -1,46 +1,50 @@
-# Client Shell
+# Desktop Client
 
-This directory contains the first Unit 4 Qt/QML shell scaffold.
+This directory contains the Qt/QML desktop application used by HDHomeRun Linux Player.
 
-## Current Scope
+## What The Client Does
 
-- Qt6 Quick desktop shell skeleton
-- player-first layout with channel rail, playback stage, and diagnostics drawer
-- real loopback backend wiring for bootstrap, devices, lineup, playback current, diagnostics, device selection, and playback retry
-- embedded playback stage driven by Qt Multimedia when the backend runs in client-managed playback mode
+- launches the user interface
+- starts the bundled backend automatically when needed
+- restores device and playback context from the backend
+- renders embedded live playback with Qt Multimedia
+- shows tuner diagnostics alongside playback
 
-## Current Unit 4 Gaps
+## User-Facing Behavior
 
-The shell now talks to the backend and renders an embedded playback surface, but Unit 4 still needs:
+The client is the entry point for the packaged application. Users normally do not need to start the backend manually.
 
-- richer client-side error handling around media-surface failures and backend reconnect paths
-- deeper automation coverage for the client-backend playback flow
+On startup the client:
 
-The current strategy uses an embedded Qt Multimedia surface in the center stage while the backend remains the canonical owner of device and playback session state. When the client launches the backend itself, it forces HDHR_BACKEND_PLAYER_MODE=client so the backend skips external mpv spawning and lets the in-window surface render the playback URL.
+- checks whether the local backend is already reachable
+- starts the bundled backend automatically if required
+- loads devices, lineup data, current playback state, and tuner diagnostics
 
-## Local Build Prerequisites
+## Build From Source
+
+Prerequisites:
 
 - CMake
 - Ninja
-- Qt6 Quick and Quick Controls 2 development packages
+- Qt6 Quick, Quick Controls 2, Network, and Multimedia development packages
 
-## Validation Status
-
-- Configured successfully with CMake and Ninja on Debian sid after installing Qt6 development packages.
-- Built successfully at build/client/hdhomerun-linux-player.
-- Passed a short offscreen launch smoke test with QT_QPA_PLATFORM=offscreen.
-- Passed the automated CTest smoke check with ctest --test-dir build/client --output-on-failure.
-
-## Runtime Environment Variables
-
-- `HDHR_BACKEND_URL`: override the loopback backend base URL. Default is `http://127.0.0.1:38080`.
-- `HDHR_BACKEND_CMD`: override the backend executable path used when the client attempts to start the backend.
-- `HDHR_BACKEND_PLAYER_MODE`: backend playback adapter mode. The client sets this to `client` when it auto-starts the backend for embedded playback.
-
-Example build flow once Qt6 is available:
+Build and test:
 
 ```sh
 cmake -S client -B build/client -G Ninja
 cmake --build build/client
 ctest --test-dir build/client --output-on-failure
 ```
+
+The built client binary is written to `build/client/hdhomerun-linux-player`.
+
+## Useful Runtime Overrides
+
+- `HDHR_BACKEND_URL`: override the backend base URL. Default is `http://127.0.0.1:38080`.
+- `HDHR_BACKEND_CMD`: override the backend executable path used when the client auto-starts the backend.
+- `HDHR_CLIENT_EXIT_AFTER_MS`: short-lived smoke-test exit timer used by automated checks.
+
+## Notes
+
+- packaged playback defaults to embedded in-window playback; no external `mpv` install is required for normal package use
+- the client now validates local auto-start URL overrides so a custom loopback URL and port can stay aligned with the backend bind address

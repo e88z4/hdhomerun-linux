@@ -1,15 +1,33 @@
-# Debian Notes
+# Debian Package Guide
 
-## `mpv` Strategy
+Use the Debian package when you want the app installed through the normal Debian package workflow.
 
-Debian packaging should declare `mpv` as a package dependency instead of embedding another copy of the player.
+## Install
 
-This matches Debian's normal package-management model, keeps security updates in the distro channel, and avoids shipping a second unmanaged player runtime.
+```sh
+sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
+```
 
-## Expected Packaging Shape
+## Run
 
-- package name: `hdhomerun-linux-player`
-- runtime dependency: `mpv`
-- installed launcher should either rely on `mpv` being on `PATH` or export `HDHR_BACKEND_MPV_BIN=/usr/bin/mpv`
+```sh
+hdhomerun-linux-player
+```
 
-The final `.deb` wiring should add the future client binary and backend launcher once Unit 4 produces the desktop entry point.
+## Remove
+
+```sh
+sudo apt remove hdhomerun-linux-player
+```
+
+## Package Behavior
+
+- installs the desktop client and backend under the normal system package layout
+- relies on host Qt runtime packages instead of bundling a separate `mpv` runtime
+- uses embedded in-window playback by default
+
+## When To Use Debian Packaging
+
+- you are on Debian or a Debian-derived distribution
+- you prefer package-manager installs and removals
+- you want desktop integration through the normal distro package path

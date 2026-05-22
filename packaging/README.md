@@ -1,52 +1,76 @@
-# Packaging Strategy
+# Packaging and Installation
 
-This directory now targets the embedded-playback architecture established in Unit 4. The packaged application should launch the Qt client first, point it at the packaged backend binary, and run the backend in client-managed playback mode so the center stage renders in-window through Qt Multimedia.
+This directory contains the packaging assets and package-specific notes for HDHomeRun Linux Player.
 
-## Chosen Runtime Strategy
+The packaged application always follows the same high-level model:
 
-The packaged runtime should be consistent across formats:
+- launch the desktop client first
+- use the bundled backend automatically
+- default to embedded in-window playback through Qt Multimedia
 
-- **AppImage**: ship the Qt client and backend inside the AppDir and export a packaged backend path through the launcher.
-- **Flatpak**: ship the Qt client and backend inside the sandbox and export the backend path from the Flatpak wrapper.
-- **Debian**: install both binaries and rely on distro Qt Multimedia and QML runtime packages instead of an external `mpv` dependency.
+## Package Formats
 
-External `mpv` remains a fallback backend mode for development and diagnostics, but it is no longer the primary packaged playback path.
+### AppImage
 
-## Current Scope
+Best when you want a portable app file with no system-level install step.
 
-These assets now focus on:
+Use:
 
-- runtime environment resolution for the packaged backend path and embedded-playback mode
-- per-format launcher conventions for client-first startup
-- smoke-test guidance for packaged client and backend binaries
-- host prerequisite checks for AppImage, Flatpak, Debian tooling, and client build tooling
+```sh
+chmod +x dist/HDHomeRunLinuxPlayer-x86_64.AppImage
+./dist/HDHomeRunLinuxPlayer-x86_64.AppImage
+```
 
-## Directory Layout
+### Debian package
 
-- `common/`: shared runtime helpers used across package formats
-- `appimage/`: AppImage launcher conventions and notes
-- `flatpak/`: Flatpak manifest and wrapper conventions
-- `debian/`: Debian package metadata skeleton
+Best on Debian and Debian-derived distributions.
 
-## Useful Checks
+Use:
 
-- `./packaging/common/smoke-test-runtime.sh`
-- `./packaging/common/check-host-dependencies.sh`
+```sh
+sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
+hdhomerun-linux-player
+```
 
-## Current Artifact Commands
+### Flatpak
 
-- `cargo build --manifest-path backend/Cargo.toml --release`
-- `cmake -S client -B build/client-release -G Ninja -DCMAKE_BUILD_TYPE=Release`
-- `cmake --build build/client-release`
-- `./packaging/debian/build-deb.sh`
-- `./packaging/appimage/build-appimage.sh`
+Best when you prefer sandboxed desktop applications.
 
-## Current Outputs
+Use:
+
+```sh
+flatpak install ./dist/HDHomeRunLinuxPlayer.flatpak
+flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
+```
+
+## Package Outputs
+
+The generated package artifacts are:
 
 - `dist/hdhomerun-linux-player_0.1.0_amd64.deb`
 - `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
 - `dist/HDHomeRunLinuxPlayer.flatpak`
 
-## Current Risk
+## Build Commands
 
-- The Flatpak runtime is now pinned to KDE `6.10`. It still needs normal periodic review as new Flathub runtime branches roll forward, but it is no longer on the previously flagged end-of-life `6.8` branch.
+```sh
+cargo build --manifest-path backend/Cargo.toml --release
+cmake -S client -B build/client-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build/client-release
+./packaging/debian/build-deb.sh
+./packaging/appimage/build-appimage.sh
+./packaging/flatpak/build-flatpak.sh
+```
+
+## Additional Notes
+
+- no packaged format requires a separate host `mpv` install for normal use
+- AppImage and Flatpak bundle both the client and backend
+- Debian installs both binaries and depends on the host Qt runtime packages
+- the Flatpak runtime currently targets KDE `6.10`
+
+## Format-Specific Notes
+
+- `packaging/appimage/README.md`
+- `packaging/debian/README.md`
+- `packaging/flatpak/README.md`
