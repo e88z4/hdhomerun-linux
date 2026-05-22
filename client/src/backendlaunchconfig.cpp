@@ -6,6 +6,15 @@
 namespace {
 constexpr int kDefaultBackendPort = 38080;
 
+QString normalizedBindHost(const QString &host)
+{
+    if (host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("127.0.0.1");
+    }
+
+    return host;
+}
+
 bool isLoopbackHost(const QString &host)
 {
     if (host.compare(QStringLiteral("localhost"), Qt::CaseInsensitive) == 0) {
@@ -56,7 +65,7 @@ BackendLaunchDecision resolveBackendLaunchDecision(const QString &backendBaseUrl
 
     return {
         true,
-        formatBindAddress(host, url.port(kDefaultBackendPort)),
+        formatBindAddress(normalizedBindHost(host), url.port(kDefaultBackendPort)),
         {},
     };
 }

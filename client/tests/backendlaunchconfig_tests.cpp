@@ -27,7 +27,7 @@ void BackendLaunchConfigTests::resolvesCustomLoopbackPort()
     const auto decision = resolveBackendLaunchDecision(QStringLiteral("http://localhost:39090"));
 
     QVERIFY(decision.canAutoStart);
-    QCOMPARE(decision.bindAddress, QStringLiteral("localhost:39090"));
+    QCOMPARE(decision.bindAddress, QStringLiteral("127.0.0.1:39090"));
     QVERIFY(decision.errorMessage.isEmpty());
 }
 

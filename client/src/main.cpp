@@ -1,6 +1,7 @@
 #include "appcontroller.h"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -9,6 +10,9 @@
 #include <memory>
 
 namespace {
+constexpr auto kHeadlessSmokeModuleDir = ":/qt/qml/HDHomeRun/Client/qmldir";
+constexpr auto kHeadlessSmokeMainQml = ":/qt/qml/HDHomeRun/Client/qml/Main.qml";
+
 bool isHeadlessSmokeRun(bool exitAfterSet, int exitAfterMs)
 {
     if (!exitAfterSet || exitAfterMs < 0) {
@@ -17,6 +21,12 @@ bool isHeadlessSmokeRun(bool exitAfterSet, int exitAfterMs)
 
     const auto platform = qEnvironmentVariable("QT_QPA_PLATFORM").trimmed().toLower();
     return platform == QStringLiteral("offscreen") || platform == QStringLiteral("minimal");
+}
+
+bool validateHeadlessQmlModule()
+{
+    return QFile::exists(QString::fromUtf8(kHeadlessSmokeModuleDir))
+        && QFile::exists(QString::fromUtf8(kHeadlessSmokeMainQml));
 }
 }
 
@@ -49,6 +59,8 @@ int main(int argc, char *argv[])
             []() { QCoreApplication::exit(EXIT_FAILURE); },
             Qt::QueuedConnection);
         engine->loadFromModule("HDHomeRun.Client", "Main");
+    } else if (!validateHeadlessQmlModule()) {
+        return EXIT_FAILURE;
     }
     appController.initialize();
 
