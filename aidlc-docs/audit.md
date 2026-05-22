@@ -883,3 +883,44 @@
   - the direct client binary exits cleanly without the earlier backend-child destruction warning
   - regenerated AppImage, Flatpak, and Debian artifacts also exit cleanly in the offscreen verification path
   - host-specific multimedia warnings remain in headless/offscreen runs, but the backend child-process cleanup issue is resolved
+
+## 2026-05-22T01:15:00Z
+- **Stage**: Client Runtime Compatibility Fix - Unit 4 / Unit 5
+- **Implementation Changes**:
+  - added client/src/backendlaunchconfig.{h,cpp} to validate `HDHR_BACKEND_URL` for local `http` auto-start and derive a matching `HDHR_BACKEND_BIND`
+  - updated client/src/appcontroller.cpp to fail fast on incompatible auto-start URL overrides instead of launching an unreachable backend child process
+  - updated client/qml/components/PlaybackStage.qml so retry and loading transitions clear latched embedded-playback surface errors for same-URL recovery
+  - added backend launch decision unit coverage under client/tests/backendlaunchconfig_tests.cpp and wired it into client/CMakeLists.txt
+- **Validation Executed**:
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - cargo test --manifest-path backend/Cargo.toml --quiet
+- **Outcome**:
+  - client auto-start now remains consistent with overridden local backend URLs and ports
+  - retrying embedded playback for the same channel no longer keeps the previous surface error latched on screen
+  - focused client unit coverage now protects the backend launch-decision logic
+
+## 2026-05-22T01:30:00Z
+- **Stage**: Package Runtime Reverification - Unit 5
+- **Implementation Changes**:
+  - updated client/src/main.cpp so short-lived headless smoke runs use QCoreApplication and skip QML window creation on `offscreen` and `minimal` platforms
+  - regenerated Debian, AppImage, and Flatpak artifacts from the updated release client binary
+  - committed the validated source changes as `ba2fddf` (`Fix client launch config and headless package verification`)
+- **Validation Executed**:
+  - cmake -S client -B build/client -G Ninja
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - cmake -S client -B build/client-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+  - cmake --build build/client-release
+  - ./packaging/flatpak/build-flatpak.sh
+  - flatpak install --user --noninteractive --reinstall dist/HDHomeRunLinuxPlayer.flatpak
+  - timeout 20s flatpak run --user --env=QT_QPA_PLATFORM=offscreen --env=HDHR_CLIENT_EXIT_AFTER_MS=750 io.github.e88z4.HDHomeRunLinuxPlayer
+  - ./packaging/debian/build-deb.sh
+  - ./packaging/appimage/build-appimage.sh
+  - env PATH="$PWD/dist/debian-verify/usr/bin:$PATH" QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=750 ./dist/debian-verify/usr/bin/hdhomerun-linux-player
+  - env APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen HDHR_CLIENT_EXIT_AFTER_MS=750 ./dist/HDHomeRunLinuxPlayer-x86_64.AppImage
+- **Outcome**:
+  - Flatpak headless package verification no longer exits with signal 11 and now completes with exit code 0
+  - Debian extract-run and AppImage extract-and-run verification continue to pass after the client runtime changes
+  - the current package artifacts in dist/ are aligned with the validated source state

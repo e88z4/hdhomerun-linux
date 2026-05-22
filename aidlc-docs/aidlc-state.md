@@ -48,6 +48,6 @@
 - **Approved Solution Shape**: Native Linux desktop application with a two-part architecture
 - **Approved Frontend Direction**: Qt/QML desktop client with a modern polished UI
 - **Approved Backend Direction**: Standalone local service bundled with the desktop app from day one
-- **Approved Playback Strategy**: Persistent in-app player session backed by mpv/libmpv and libhdhomerun-centered device integration
-- **Packaging Runtime Decision**: AppImage prefers bundled `mpv`, Flatpak bundles `mpv` inside the sandbox, Debian depends on the distro `mpv` package
+- **Approved Playback Strategy**: Backend-owned canonical playback session state with client-managed embedded Qt Multimedia playback as the packaged default, while external `mpv` remains a development and diagnostics fallback
+- **Packaging Runtime Decision**: AppImage and Flatpak bundle the client and backend and default to `HDHR_BACKEND_PLAYER_MODE=client`; Debian installs both binaries and relies on distro Qt runtime packages rather than a packaged `mpv`
 - **First Deliverable Expectation**: AppImage, Flatpak, and Debian packaging included in the first deliverable
