@@ -29,7 +29,7 @@ AppController::AppController(QObject *parent)
     , m_backendProcess(nullptr)
     , m_backendBaseUrl(qEnvironmentVariable("HDHR_BACKEND_URL", kDefaultBackendUrl))
     , m_selectedDeviceIndex(-1)
-    , m_guideVisible(false)
+    , m_guideVisible(true)
     , m_guideLoading(false)
     , m_guideWindowStart(defaultGuideWindowStart())
     , m_guideDurationHours(24)
@@ -185,10 +185,8 @@ void AppController::toggleGuide()
         return;
     }
 
-    setGuideVisible(!m_guideVisible);
-    if (m_guideVisible) {
-        loadGuide();
-    }
+    setGuideVisible(true);
+    loadGuide();
 }
 
 void AppController::shiftGuideWindow(int deltaHours)
@@ -511,14 +509,13 @@ void AppController::refreshSelectedData()
     if (selectedDeviceRef().isEmpty()) {
         setChannels({});
         setGuideChannels({});
-        setGuideVisible(false);
         setGuideLoading(false);
         setDiagnosticsRows({});
         setDiagnosticsSummary(QStringLiteral("Select a device to load diagnostics"));
         if (!m_devices.isEmpty()) {
             setShellPhase(QStringLiteral("device_selection"));
             setStageTitle(QStringLiteral("Choose a device"));
-            setStageSubtitle(QStringLiteral("Select an HDHomeRun device to load the channel rail"));
+            setStageSubtitle(QStringLiteral("Select an HDHomeRun device to load the guide"));
         } else {
             setShellPhase(QStringLiteral("device_selection"));
             setStageTitle(QStringLiteral("No devices found"));
@@ -597,7 +594,7 @@ void AppController::applyPlaybackResponse(const QJsonObject &payload)
     } else if (!selectedDeviceRef().isEmpty()) {
         setCurrentChannelRef(QString());
         setStageTitle(QStringLiteral("Select a channel"));
-        setStageSubtitle(QStringLiteral("Use the channel rail to start live playback"));
+        setStageSubtitle(QStringLiteral("Use the guide to start live playback"));
     }
 
     if (!failure.isEmpty()) {

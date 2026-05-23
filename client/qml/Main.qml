@@ -10,9 +10,9 @@ ApplicationWindow {
 
     property int overlayPulse: 0
     property bool fullscreenMode: visibility === Window.FullScreen
-    property real guidePanelHeight: 380
+    property real guidePanelHeight: 390
     property real guidePanelMinHeight: 280
-    property real guidePanelMaxHeight: Math.max(360, height * 0.58)
+    property real guidePanelMaxHeight: Math.max(360, height * 0.52)
 
     function bumpOverlay() {
         overlayPulse += 1
@@ -45,16 +45,6 @@ ApplicationWindow {
         guidePanelHeight = Math.max(guidePanelMinHeight, Math.min(guidePanelHeight, guidePanelMaxHeight))
     }
 
-    Connections {
-        target: appController
-
-        function onGuideVisibleChanged() {
-            if (appController.guideVisible) {
-                window.guidePanelHeight = Math.max(window.guidePanelHeight, 380)
-            }
-        }
-    }
-
     Shortcut {
         sequence: "F"
         context: Qt.ApplicationShortcut
@@ -73,12 +63,30 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
-            playbackStage.adjustVolume(0.05)
+            appController.playAdjacentChannel(-1)
         }
     }
 
     Shortcut {
         sequence: "Down"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            window.bumpOverlay()
+            appController.playAdjacentChannel(1)
+        }
+    }
+
+    Shortcut {
+        sequence: "Page Up"
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            window.bumpOverlay()
+            playbackStage.adjustVolume(0.05)
+        }
+    }
+
+    Shortcut {
+        sequence: "Page Down"
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
@@ -102,12 +110,6 @@ ApplicationWindow {
             window.bumpOverlay()
             appController.playAdjacentChannel(-1)
         }
-    }
-
-    Shortcut {
-        sequence: "G"
-        context: Qt.ApplicationShortcut
-        onActivated: appController.toggleGuide()
     }
 
     Rectangle {
@@ -167,119 +169,92 @@ ApplicationWindow {
                     }
                 }
             }
-
-            IconButton {
-                iconKind: "guide"
-                toolTipText: appController.guideVisible ? "Hide guide" : "Show guide"
-                onClicked: appController.toggleGuide()
-            }
         }
     }
 
-    RowLayout {
+    Item {
         anchors.fill: parent
         anchors.margins: window.fullscreenMode ? 0 : 18
-        spacing: 0
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        PlaybackStage {
+            id: playbackStage
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: window.fullscreenMode ? parent.bottom : guideContainer.top
+            anchors.bottomMargin: window.fullscreenMode ? 0 : 14
+            immersiveMode: window.fullscreenMode
+            fullscreenMode: window.fullscreenMode
+            overlayPulse: window.overlayPulse
+            shellPhase: appController.shellPhase
+            currentTitle: appController.stageTitle
+            currentSubtitle: appController.stageSubtitle
+            warningText: appController.stageWarning
+            failureText: appController.stageFailure
+            playbackUrl: appController.playbackUrl
+            embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+            diagnosticsSummary: appController.diagnosticsSummary
+            diagnosticsRows: appController.diagnosticsRows
+            retryEnabled: appController.shellPhase === "playback_failed"
+            onExitFullscreenRequested: window.exitFullscreen()
+            onToggleFullscreenRequested: window.toggleFullscreen()
+            onRetryRequested: appController.retryPlayback()
+        }
 
-            spacing: window.fullscreenMode ? 0 : 14
+        Item {
+            id: guideContainer
+            visible: !window.fullscreenMode
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: window.guidePanelHeight + 12
 
-            PlaybackStage {
-                id: playbackStage
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                immersiveMode: window.fullscreenMode
-                fullscreenMode: window.fullscreenMode
-                overlayPulse: window.overlayPulse
-                shellPhase: appController.shellPhase
-                currentTitle: appController.stageTitle
-                currentSubtitle: appController.stageSubtitle
-                warningText: appController.stageWarning
-                failureText: appController.stageFailure
-                playbackUrl: appController.playbackUrl
-                embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
-                diagnosticsSummary: appController.diagnosticsSummary
-                diagnosticsRows: appController.diagnosticsRows
-                retryEnabled: appController.shellPhase === "playback_failed"
-                onExitFullscreenRequested: window.exitFullscreen()
-                onToggleFullscreenRequested: window.toggleFullscreen()
-                onRetryRequested: appController.retryPlayback()
-            }
+            Rectangle {
+                id: guideResizeHandle
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 96
+                height: 12
+                radius: 6
+                color: "#23445b"
 
-            Item {
-                visible: !window.fullscreenMode && appController.guideVisible
-                Layout.fillWidth: true
-                Layout.preferredHeight: window.guidePanelHeight + 12
-                Layout.minimumHeight: window.guidePanelMinHeight + 12
-                Layout.maximumHeight: window.guidePanelMaxHeight + 12
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.SizeVerCursor
+                    property real dragStartHeight: 0
+                    property real dragStartY: 0
 
-                Rectangle {
-                    id: guideResizeHandle
-                    anchors.top: parent.top
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 96
-                    height: 12
-                    radius: 6
-                    color: "#23445b"
+                    onPressed: function(mouse) {
+                        dragStartHeight = window.guidePanelHeight
+                        dragStartY = mouse.y
+                    }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.SizeVerCursor
-                        property real dragStartHeight: 0
-                        property real dragStartY: 0
-
-                        onPressed: function(mouse) {
-                            dragStartHeight = window.guidePanelHeight
-                            dragStartY = mouse.y
+                    onPositionChanged: function(mouse) {
+                        if (!pressed) {
+                            return
                         }
 
-                        onPositionChanged: function(mouse) {
-                            if (!pressed) {
-                                return
-                            }
-
-                            const delta = mouse.y - dragStartY
-                            window.guidePanelHeight = Math.max(
-                                window.guidePanelMinHeight,
-                                Math.min(window.guidePanelMaxHeight, dragStartHeight - delta)
-                            )
-                        }
+                        const delta = mouse.y - dragStartY
+                        window.guidePanelHeight = Math.max(
+                            window.guidePanelMinHeight,
+                            Math.min(window.guidePanelMaxHeight, dragStartHeight - delta)
+                        )
                     }
                 }
-
-                GuideGrid {
-                    anchors.top: guideResizeHandle.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    guideChannels: appController.guideChannels
-                    currentChannelRef: appController.currentChannelRef
-                    windowStart: appController.guideWindowStart
-                    durationHours: appController.guideDurationHours
-                    loading: appController.guideLoading
-                    onChannelActivated: appController.playChannel(channelRef)
-                    onJumpToNowRequested: appController.jumpGuideToNow()
-                }
             }
 
-            ChannelRail {
-                visible: !window.fullscreenMode && !appController.guideVisible
-                Layout.fillWidth: true
-                Layout.preferredHeight: 170
-                Layout.minimumHeight: 150
-                Layout.maximumHeight: 190
-                compactMode: true
-                channels: appController.channels
+            GuideGrid {
+                anchors.top: guideResizeHandle.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                guideChannels: appController.guideChannels
                 currentChannelRef: appController.currentChannelRef
-                onChannelActivated: function(channelRef, guideNumber, guideName, availability) {
-                    if (availability === "restricted") {
-                        return
-                    }
-                    appController.playChannel(channelRef)
-                }
+                windowStart: appController.guideWindowStart
+                durationHours: appController.guideDurationHours
+                loading: appController.guideLoading
+                onChannelActivated: appController.playChannel(channelRef)
+                onJumpToNowRequested: appController.jumpGuideToNow()
             }
         }
     }

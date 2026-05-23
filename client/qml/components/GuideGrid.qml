@@ -47,6 +47,39 @@ Pane {
         return labelWidth + ((now - windowStart) / (windowEnd - windowStart)) * scheduleWidth
     }
 
+    function currentChannelIndex() {
+        for (let index = 0; index < guideChannels.length; index += 1) {
+            if (guideChannels[index].channelRef === currentChannelRef) {
+                return index
+            }
+        }
+
+        return -1
+    }
+
+    function ensureCurrentChannelVisible() {
+        const index = currentChannelIndex()
+        if (index < 0) {
+            return
+        }
+
+        const rowTop = headerHeight + (index * rowHeight)
+        const rowBottom = rowTop + rowHeight
+        const viewportTop = guideFlickable.contentY
+        const viewportBottom = viewportTop + guideFlickable.height
+
+        if (rowTop >= viewportTop && rowBottom <= viewportBottom) {
+            return
+        }
+
+        const centeredTop = rowTop - Math.max(0, (guideFlickable.height - rowHeight) / 2)
+        const maxTop = Math.max(0, guideFlickable.contentHeight - guideFlickable.height)
+        guideFlickable.contentY = Math.max(0, Math.min(maxTop, centeredTop))
+    }
+
+    onCurrentChannelRefChanged: ensureCurrentChannelVisible()
+    onGuideChannelsChanged: ensureCurrentChannelVisible()
+
     padding: 14
     background: Rectangle {
         radius: 26
@@ -113,6 +146,7 @@ Pane {
             }
 
             Flickable {
+                id: guideFlickable
                 anchors.fill: parent
                 anchors.margins: 10
                 visible: !root.loading && root.guideChannels.length > 0

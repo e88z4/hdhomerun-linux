@@ -91,7 +91,7 @@ Pane {
         }
     }
 
-    padding: immersiveMode ? 0 : 22
+    padding: immersiveMode ? 0 : 14
     background: Rectangle {
         radius: root.immersiveMode ? 0 : 34
         color: root.immersiveMode ? "transparent" : "#09141d"
@@ -99,13 +99,15 @@ Pane {
         border.color: "#183345"
     }
 
-    ColumnLayout {
+    Item {
         anchors.fill: parent
-        spacing: root.immersiveMode ? 0 : 18
 
         RowLayout {
+            id: stageHeader
             visible: !root.immersiveMode
-            Layout.fillWidth: true
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -147,19 +149,20 @@ Pane {
                 radius: 16
                 color: "#112434"
                 border.color: "#23475f"
-                implicitWidth: 340
-                implicitHeight: 56
+                implicitWidth: Math.min(720, Math.max(420, (root.diagnosticsRows.length * 152) + 32))
+                implicitHeight: 92
 
                 ColumnLayout {
+                    id: diagnosticsColumn
                     anchors.fill: parent
                     anchors.leftMargin: 14
                     anchors.rightMargin: 14
                     anchors.topMargin: 8
                     anchors.bottomMargin: 8
-                    spacing: 2
+                    spacing: 4
 
                     Label {
-                        text: root.diagnosticsRows.length > 0 ? root.diagnosticsRows[0].title : "Diagnostics"
+                        text: "Tuners"
                         color: "#eff7fb"
                         font.family: "IBM Plex Sans"
                         font.pixelSize: 12
@@ -168,19 +171,81 @@ Pane {
                     }
 
                     Label {
-                        text: root.diagnosticsRows.length > 0 ? root.diagnosticsRows[0].detail : root.diagnosticsSummary
+                        text: root.diagnosticsSummary
                         color: "#8ea7b9"
                         font.family: "IBM Plex Sans"
                         font.pixelSize: 11
                         elide: Text.ElideRight
+                    }
+
+                    Flickable {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 46
+                        contentWidth: diagnosticsRowStrip.implicitWidth
+                        contentHeight: diagnosticsRowStrip.implicitHeight
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        ScrollBar.horizontal: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
+
+                        Row {
+                            id: diagnosticsRowStrip
+                            spacing: 8
+
+                            Repeater {
+                                model: root.diagnosticsRows
+
+                                Rectangle {
+                                    required property var modelData
+                                    width: 144
+                                    height: 42
+                                    radius: 12
+                                    color: "#163042"
+                                    border.color: "#28516a"
+
+                                    Column {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        anchors.topMargin: 6
+                                        anchors.bottomMargin: 6
+                                        spacing: 1
+
+                                        Label {
+                                            width: parent.width
+                                            text: parent.parent.modelData.title
+                                            color: "#eff7fb"
+                                            font.family: "IBM Plex Sans"
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Label {
+                                            width: parent.width
+                                            text: parent.parent.modelData.detail
+                                            color: "#8ea7b9"
+                                            font.family: "IBM Plex Sans"
+                                            font.pixelSize: 10
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            anchors.top: root.immersiveMode ? parent.top : stageHeader.bottom
+            anchors.topMargin: root.immersiveMode ? 0 : 12
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
             radius: root.immersiveMode ? 0 : 28
             color: "#0d1f2d"
             border.width: root.immersiveMode ? 0 : 1
@@ -188,30 +253,8 @@ Pane {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: root.immersiveMode ? 0 : 26
-                spacing: root.immersiveMode ? 0 : 14
-
-                Label {
-                    visible: !root.immersiveMode
-                    text: root.shellPhase === "playing" ? "Playback Stage" : (root.shellPhase === "playback_failed" ? "Playback Recovery" : "Playback Loading")
-                    color: "#e5f0f7"
-                    font.family: "IBM Plex Sans"
-                    font.pixelSize: 22
-                    font.bold: true
-                }
-
-                Label {
-                    visible: !root.immersiveMode
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: root.shellPhase === "playing"
-                          ? "The client shell is ready for backend-driven playback state binding. The final embedded surface adapter will plug into this stage without changing the surrounding UX."
-                          : root.failureText !== ""
-                            ? root.failureText
-                            : "Loading state is already modeled in the shell so backend bootstrap and playback transitions can stay visually stable."
-                    color: root.shellPhase === "playback_failed" ? "#ffd3b8" : "#9cb5c5"
-                    font.family: "IBM Plex Sans"
-                }
+                anchors.margins: root.immersiveMode ? 0 : 8
+                spacing: 0
 
                 Rectangle {
                     Layout.fillWidth: true
@@ -397,7 +440,7 @@ Pane {
 
                                 IconButton {
                                     iconKind: "volume-down"
-                                    toolTipText: "Volume down (Down key)"
+                                    toolTipText: "Volume down (Page Down key)"
                                     enabled: root.volumeControlEnabled
                                     onClicked: root.adjustVolume(-0.05)
                                 }
@@ -449,7 +492,7 @@ Pane {
 
                                 IconButton {
                                     iconKind: "volume-up"
-                                    toolTipText: "Volume up (Up key)"
+                                    toolTipText: "Volume up (Page Up key)"
                                     enabled: root.volumeControlEnabled
                                     onClicked: root.adjustVolume(0.05)
                                 }
@@ -497,7 +540,7 @@ Pane {
                             Label {
                                 id: overlayHint
                                 anchors.centerIn: parent
-                                text: "Up/Down volume  Left/Right switch channels  F toggle fullscreen  Esc exit"
+                                text: "Up/Down change EPG row  PgUp/PgDown volume  Left/Right switch channels  F toggle fullscreen  Esc exit"
                                 color: "#d7e5ef"
                                 font.family: "IBM Plex Sans"
                                 font.pixelSize: 13

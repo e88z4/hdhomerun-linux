@@ -8,9 +8,8 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 
 - live TV playback for playable HDHomeRun channels
 - automatic device discovery on the local network
-- bottom scrollable channel strip for quick switching
-- SiliconDust guide-backed current-show titles in the channel strip
-- a `G` toggle that swaps the bottom strip between the channel list and a full EPG grid
+- a permanent full EPG grid docked below playback for quick switching
+- SiliconDust guide-backed current-show titles, channel logos, and program artwork in the guide
 - compact tuner diagnostics embedded into the playback stage instead of a dedicated side drawer
 - playback-time idle inhibition so the screensaver and monitor sleep do not interrupt viewing
 - fullscreen playback mode for a larger viewing surface
@@ -76,11 +75,12 @@ On first launch the app should:
 
 - `F`: toggle fullscreen mode
 - `Esc`: exit fullscreen mode
-- `Up`: volume up
-- `Down`: volume down
+- `Up`: previous guide row / previous playable channel
+- `Down`: next guide row / next playable channel
 - `Right`: next playable channel
 - `Left`: previous playable channel
-- `G`: toggle the guide grid
+- `Page Up`: volume up
+- `Page Down`: volume down
 
 ## Requirements
 
