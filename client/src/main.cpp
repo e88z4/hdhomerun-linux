@@ -11,8 +11,10 @@
 #include <memory>
 
 namespace {
-constexpr auto kHeadlessSmokeModuleDir = ":/qt/qml/HDHomeRun/Client/qmldir";
-constexpr auto kHeadlessSmokeMainQml = ":/qt/qml/HDHomeRun/Client/qml/Main.qml";
+constexpr auto kHeadlessSmokeModuleDirModern = ":/qt/qml/HDHomeRun/Client/qmldir";
+constexpr auto kHeadlessSmokeMainQmlModern = ":/qt/qml/HDHomeRun/Client/qml/Main.qml";
+constexpr auto kHeadlessSmokeModuleDirLegacy = ":/HDHomeRun/Client/qmldir";
+constexpr auto kHeadlessSmokeMainQmlLegacy = ":/HDHomeRun/Client/qml/Main.qml";
 
 bool isHeadlessSmokeRun(bool exitAfterSet, int exitAfterMs)
 {
@@ -26,8 +28,12 @@ bool isHeadlessSmokeRun(bool exitAfterSet, int exitAfterMs)
 
 bool validateHeadlessQmlModule()
 {
-    return QFile::exists(QString::fromUtf8(kHeadlessSmokeModuleDir))
-        && QFile::exists(QString::fromUtf8(kHeadlessSmokeMainQml));
+    const bool modernLayout = QFile::exists(QString::fromUtf8(kHeadlessSmokeModuleDirModern))
+        && QFile::exists(QString::fromUtf8(kHeadlessSmokeMainQmlModern));
+    const bool legacyLayout = QFile::exists(QString::fromUtf8(kHeadlessSmokeModuleDirLegacy))
+        && QFile::exists(QString::fromUtf8(kHeadlessSmokeMainQmlLegacy));
+
+    return modernLayout || legacyLayout;
 }
 }
 
