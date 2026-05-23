@@ -4,6 +4,7 @@ set -eu
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 DEV_BUILD_DIR="${HDHR_DEV_BUILD_DIR:-$ROOT_DIR/build/client}"
 DEBIAN_VERIFY_DIR="$ROOT_DIR/dist/debian-verify"
+PACKAGE_VERSION="${HDHR_PACKAGE_VERSION:-0.1.0}"
 
 cmake -S "$ROOT_DIR/client" -B "$DEV_BUILD_DIR" -G Ninja
 cmake --build "$DEV_BUILD_DIR"
@@ -18,7 +19,7 @@ HDHR_SKIP_BUILD=1 sh "$ROOT_DIR/packaging/flatpak/build-flatpak.sh"
 
 rm -rf "$DEBIAN_VERIFY_DIR"
 mkdir -p "$DEBIAN_VERIFY_DIR"
-dpkg-deb -x "$ROOT_DIR/dist/hdhomerun-linux-player_0.1.0_amd64.deb" "$DEBIAN_VERIFY_DIR"
+dpkg-deb -x "$ROOT_DIR/dist/hdhomerun-linux-player_${PACKAGE_VERSION}_amd64.deb" "$DEBIAN_VERIFY_DIR"
 
 env PATH="$DEBIAN_VERIFY_DIR/usr/bin:$PATH" \
     QT_QPA_PLATFORM=offscreen \

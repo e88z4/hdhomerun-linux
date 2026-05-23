@@ -67,6 +67,8 @@ This command:
 - rebuilds Debian, AppImage, and Flatpak artifacts
 - verifies packaged startup for Debian, AppImage, and Flatpak
 
+The repository also includes a GitHub Actions release workflow at `.github/workflows/release.yml`. Pushing a tag such as `v0.1.0` after updating the source version triggers the same distribution build, uploads the `dist/` artifacts, and publishes a GitHub release.
+
 Lower-level packaging commands:
 
 ```sh

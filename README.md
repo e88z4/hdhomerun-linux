@@ -38,6 +38,8 @@ Current package artifacts are generated under `dist/`:
 - `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
 - `dist/HDHomeRunLinuxPlayer.flatpak`
 
+GitHub releases can be published from tags that match the app version in source, using the workflow at `.github/workflows/release.yml`.
+
 ## Quick Start
 
 ### AppImage
