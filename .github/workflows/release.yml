@@ -15,25 +15,17 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  prepare:
     runs-on: ubuntu-24.04
-    env:
-      HDHR_LIBHDHOMERUN_DIR: ${{ github.workspace }}/.vendor/libhdhomerun
-      QT_QPA_PLATFORM: offscreen
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release_tag: ${{ steps.meta.outputs.release_tag }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Check out libhdhomerun vendor sources
-        uses: actions/checkout@v4
-        with:
-          repository: Silicondust/libhdhomerun
-          path: .vendor/libhdhomerun
-          fetch-depth: 1
-          persist-credentials: false
 
       - name: Resolve release metadata
         id: meta
@@ -68,6 +60,45 @@ jobs:
 
           echo "version=$cargo_version" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch_name: amd64
+            runner: ubuntu-24.04
+            deb_arch: amd64
+            appimage_arch: x86_64
+            flatpak_arch: x86_64
+          - arch_name: arm64
+            runner: ubuntu-24.04-arm
+            deb_arch: arm64
+            appimage_arch: aarch64
+            flatpak_arch: aarch64
+
+    runs-on: ${{ matrix.runner }}
+    env:
+      HDHR_LIBHDHOMERUN_DIR: ${{ github.workspace }}/.vendor/libhdhomerun
+      HDHR_PACKAGE_ARCH: ${{ matrix.deb_arch }}
+      HDHR_APPIMAGE_ARCH: ${{ matrix.appimage_arch }}
+      HDHR_FLATPAK_ARCH: ${{ matrix.flatpak_arch }}
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out libhdhomerun vendor sources
+        uses: actions/checkout@v4
+        with:
+          repository: Silicondust/libhdhomerun
+          path: .vendor/libhdhomerun
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -107,7 +138,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -L --fail --output /tmp/appimagetool.AppImage \
-            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${{ matrix.appimage_arch }}.AppImage
           chmod +x /tmp/appimagetool.AppImage
           sudo mv /tmp/appimagetool.AppImage /usr/local/bin/appimagetool
 
@@ -120,7 +151,7 @@ jobs:
       - name: Build and verify distribution packages
         shell: bash
         env:
-          HDHR_PACKAGE_VERSION: ${{ steps.meta.outputs.version }}
+          HDHR_PACKAGE_VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
           dbus-run-session -- sh ./packaging/build-and-verify-dist.sh
@@ -128,36 +159,50 @@ jobs:
       - name: Generate release checksums
         shell: bash
         env:
-          VERSION: ${{ steps.meta.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          APPIMAGE_ARCH: ${{ matrix.appimage_arch }}
+          FLATPAK_ARCH: ${{ matrix.flatpak_arch }}
         run: |
           set -euo pipefail
           cd dist
           sha256sum \
-            "hdhomerun-linux-player_${VERSION}_amd64.deb" \
-            HDHomeRunLinuxPlayer-x86_64.AppImage \
-            HDHomeRunLinuxPlayer.flatpak \
-            > SHASUMS256.txt
+            "hdhomerun-linux-player_${VERSION}_${DEB_ARCH}.deb" \
+            "HDHomeRunLinuxPlayer-${APPIMAGE_ARCH}.AppImage" \
+            "HDHomeRunLinuxPlayer-${FLATPAK_ARCH}.flatpak" \
+            > "SHASUMS256-${DEB_ARCH}.txt"
 
       - name: Upload release artifacts to workflow run
         uses: actions/upload-artifact@v4
         with:
-          name: hdhomerun-linux-player-${{ steps.meta.outputs.version }}
+          name: hdhomerun-linux-player-${{ needs.prepare.outputs.version }}-${{ matrix.arch_name }}
           path: |
-            dist/hdhomerun-linux-player_${{ steps.meta.outputs.version }}_amd64.deb
-            dist/HDHomeRunLinuxPlayer-x86_64.AppImage
-            dist/HDHomeRunLinuxPlayer.flatpak
-            dist/SHASUMS256.txt
+            dist/hdhomerun-linux-player_${{ needs.prepare.outputs.version }}_${{ matrix.deb_arch }}.deb
+            dist/HDHomeRunLinuxPlayer-${{ matrix.appimage_arch }}.AppImage
+            dist/HDHomeRunLinuxPlayer-${{ matrix.flatpak_arch }}.flatpak
+            dist/SHASUMS256-${{ matrix.deb_arch }}.txt
           if-no-files-found: error
+
+  publish:
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: hdhomerun-linux-player-${{ needs.prepare.outputs.version }}-*
+          path: release-artifacts
+          merge-multiple: true
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.release_tag }}
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
-          name: HDHomeRun Linux Player ${{ steps.meta.outputs.version }}
+          name: HDHomeRun Linux Player ${{ needs.prepare.outputs.version }}
           generate_release_notes: true
           files: |
-            dist/hdhomerun-linux-player_${{ steps.meta.outputs.version }}_amd64.deb
-            dist/HDHomeRunLinuxPlayer-x86_64.AppImage
-            dist/HDHomeRunLinuxPlayer.flatpak
-            dist/SHASUMS256.txt
+            release-artifacts/*

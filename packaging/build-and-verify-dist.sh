@@ -5,6 +5,9 @@ ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 DEV_BUILD_DIR="${HDHR_DEV_BUILD_DIR:-$ROOT_DIR/build/client}"
 DEBIAN_VERIFY_DIR="$ROOT_DIR/dist/debian-verify"
 PACKAGE_VERSION="${HDHR_PACKAGE_VERSION:-0.1.0}"
+PACKAGE_ARCH="${HDHR_PACKAGE_ARCH:-$(dpkg --print-architecture)}"
+APPIMAGE_ARCH="${HDHR_APPIMAGE_ARCH:-$(uname -m)}"
+FLATPAK_ARCH="${HDHR_FLATPAK_ARCH:-$(uname -m)}"
 
 cmake -S "$ROOT_DIR/client" -B "$DEV_BUILD_DIR" -G Ninja
 cmake --build "$DEV_BUILD_DIR"
@@ -19,7 +22,7 @@ HDHR_SKIP_BUILD=1 sh "$ROOT_DIR/packaging/flatpak/build-flatpak.sh"
 
 rm -rf "$DEBIAN_VERIFY_DIR"
 mkdir -p "$DEBIAN_VERIFY_DIR"
-dpkg-deb -x "$ROOT_DIR/dist/hdhomerun-linux-player_${PACKAGE_VERSION}_amd64.deb" "$DEBIAN_VERIFY_DIR"
+dpkg-deb -x "$ROOT_DIR/dist/hdhomerun-linux-player_${PACKAGE_VERSION}_${PACKAGE_ARCH}.deb" "$DEBIAN_VERIFY_DIR"
 
 env PATH="$DEBIAN_VERIFY_DIR/usr/bin:$PATH" \
     QT_QPA_PLATFORM=offscreen \
@@ -29,9 +32,9 @@ env PATH="$DEBIAN_VERIFY_DIR/usr/bin:$PATH" \
 env APPIMAGE_EXTRACT_AND_RUN=1 \
     QT_QPA_PLATFORM=offscreen \
     HDHR_CLIENT_EXIT_AFTER_MS=750 \
-    "$ROOT_DIR/dist/HDHomeRunLinuxPlayer-x86_64.AppImage" >/dev/null 2>&1
+    "$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${APPIMAGE_ARCH}.AppImage" >/dev/null 2>&1
 
-flatpak install --user --noninteractive --reinstall "$ROOT_DIR/dist/HDHomeRunLinuxPlayer.flatpak" >/dev/null
+flatpak install --user --noninteractive --reinstall "$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${FLATPAK_ARCH}.flatpak" >/dev/null
 timeout 20s flatpak run --user \
     --env=QT_QPA_PLATFORM=offscreen \
     --env=HDHR_CLIENT_EXIT_AFTER_MS=750 \

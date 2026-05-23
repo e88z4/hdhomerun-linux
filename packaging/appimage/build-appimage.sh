@@ -3,7 +3,8 @@ set -eu
 
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 APPDIR="$ROOT_DIR/dist/appimage-root/HDHomeRunLinuxPlayer.AppDir"
-OUTPUT_APPIMAGE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer-x86_64.AppImage"
+APPIMAGE_ARCH="${HDHR_APPIMAGE_ARCH:-$(uname -m)}"
+OUTPUT_APPIMAGE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${APPIMAGE_ARCH}.AppImage"
 CLIENT_BIN="${HDHR_CLIENT_BIN:-$ROOT_DIR/build/client-release/hdhomerun-linux-player}"
 BACKEND_BIN="${HDHR_BACKEND_BIN:-$ROOT_DIR/backend/target/release/hdhomerun-backend}"
 APPIMAGETOOL_BIN="${APPIMAGETOOL_BIN:-appimagetool}"
@@ -41,5 +42,5 @@ install -Dm644 "$ROOT_DIR/packaging/common/io.github.e88z4.HDHomeRunLinuxPlayer.
 install -Dm644 "$ROOT_DIR/packaging/common/io.github.e88z4.HDHomeRunLinuxPlayer.appdata.xml" "$APPDIR/usr/share/metainfo/io.github.e88z4.HDHomeRunLinuxPlayer.appdata.xml"
 install -Dm755 "$ROOT_DIR/packaging/common/export-runtime-env.sh" "$APPDIR/usr/lib/hdhomerun-linux-player/export-runtime-env.sh"
 
-ARCH=x86_64 "$APPIMAGETOOL_BIN" "$APPDIR" "$OUTPUT_APPIMAGE"
+ARCH="$APPIMAGE_ARCH" "$APPIMAGETOOL_BIN" "$APPDIR" "$OUTPUT_APPIMAGE"
 printf 'Created AppImage: %s\n' "$OUTPUT_APPIMAGE"

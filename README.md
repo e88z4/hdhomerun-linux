@@ -34,11 +34,12 @@ Choose the package format that best matches your system:
 
 Current package artifacts are generated under `dist/`:
 
-- `dist/hdhomerun-linux-player_0.1.0_amd64.deb`
-- `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
-- `dist/HDHomeRunLinuxPlayer.flatpak`
+- `dist/hdhomerun-linux-player_0.1.0_<arch>.deb`
+- `dist/HDHomeRunLinuxPlayer-<appimage-arch>.AppImage`
+- `dist/HDHomeRunLinuxPlayer-<flatpak-arch>.flatpak`
 
 GitHub releases can be published from tags that match the app version in source, using the workflow at `.github/workflows/release.yml`.
+That workflow now builds both `amd64` and `arm64` artifacts, including Raspberry Pi 3-class `arm64` targets and newer.
 
 ## Quick Start
 
@@ -49,6 +50,8 @@ chmod +x dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 ./dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 ```
 
+On arm64 systems such as Raspberry Pi OS 64-bit, use the matching `HDHomeRunLinuxPlayer-aarch64.AppImage` release asset.
+
 ### Debian package
 
 ```sh
@@ -56,12 +59,16 @@ sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
 hdhomerun-linux-player
 ```
 
+On arm64 systems, install the matching `hdhomerun-linux-player_0.1.0_arm64.deb` release asset.
+
 ### Flatpak
 
 ```sh
-flatpak install ./dist/HDHomeRunLinuxPlayer.flatpak
+flatpak install ./dist/HDHomeRunLinuxPlayer-x86_64.flatpak
 flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 ```
+
+On arm64 systems, use the matching `HDHomeRunLinuxPlayer-aarch64.flatpak` release asset.
 
 ## First Launch
 
