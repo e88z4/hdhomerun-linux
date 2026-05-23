@@ -538,6 +538,8 @@ mod ffi {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::c_char;
+
     use super::TunerDiagnosticsProvider;
     use super::ffi::HdhomerunDiscoverDeviceV3;
     use super::{
@@ -546,10 +548,12 @@ mod tests {
     };
     use crate::models::{ChannelAvailability, RememberedContext, TunerDiagnostic};
 
-    fn char_buf<const N: usize>(value: &str) -> [i8; N] {
-        let mut result = [0; N];
+    fn char_buf<const N: usize>(value: &str) -> [c_char; N] {
+        assert!(value.len() < N);
+
+        let mut result = [0 as c_char; N];
         for (index, byte) in value.as_bytes().iter().enumerate() {
-            result[index] = *byte as i8;
+            result[index] = *byte as c_char;
         }
         result
     }
