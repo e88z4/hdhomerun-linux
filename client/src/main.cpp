@@ -35,6 +35,15 @@ bool validateHeadlessQmlModule()
 
     return modernLayout || legacyLayout;
 }
+
+QUrl mainQmlUrl()
+{
+    if (QFile::exists(QString::fromUtf8(kHeadlessSmokeMainQmlModern))) {
+        return QUrl(QStringLiteral("qrc:/qt/qml/HDHomeRun/Client/qml/Main.qml"));
+    }
+
+    return QUrl(QStringLiteral("qrc:/HDHomeRun/Client/qml/Main.qml"));
+}
 }
 
 int main(int argc, char *argv[])
@@ -71,7 +80,7 @@ int main(int argc, char *argv[])
             app.get(),
             []() { QCoreApplication::exit(EXIT_FAILURE); },
             Qt::QueuedConnection);
-        engine->loadFromModule("HDHomeRun.Client", "Main");
+        engine->load(mainQmlUrl());
 
         idleInhibitor->setPlaybackActive(appController.shellPhase() == QStringLiteral("playing"));
     } else if (!validateHeadlessQmlModule()) {
