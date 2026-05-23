@@ -16,6 +16,8 @@ Pane {
     required property string failureText
     required property string playbackUrl
     required property bool embeddedPlaybackEnabled
+    required property string diagnosticsSummary
+    required property var diagnosticsRows
     required property bool retryEnabled
     signal exitFullscreenRequested()
     signal toggleFullscreenRequested()
@@ -137,6 +139,41 @@ Pane {
                     color: "#eff7fb"
                     font.family: "IBM Plex Sans"
                     font.bold: true
+                }
+            }
+
+            Rectangle {
+                visible: !root.immersiveMode
+                radius: 16
+                color: "#112434"
+                border.color: "#23475f"
+                implicitWidth: 340
+                implicitHeight: 56
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 14
+                    anchors.topMargin: 8
+                    anchors.bottomMargin: 8
+                    spacing: 2
+
+                    Label {
+                        text: root.diagnosticsRows.length > 0 ? root.diagnosticsRows[0].title : "Diagnostics"
+                        color: "#eff7fb"
+                        font.family: "IBM Plex Sans"
+                        font.pixelSize: 12
+                        font.bold: true
+                        elide: Text.ElideRight
+                    }
+
+                    Label {
+                        text: root.diagnosticsRows.length > 0 ? root.diagnosticsRows[0].detail : root.diagnosticsSummary
+                        color: "#8ea7b9"
+                        font.family: "IBM Plex Sans"
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
                 }
             }
         }

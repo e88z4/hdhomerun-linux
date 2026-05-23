@@ -70,7 +70,6 @@ Pane {
             visible: !root.compactMode
             text: "Persistent rail for browsing and quick switching"
             color: "#8ea7b9"
-            wrapMode: Text.WordWrap
             font.family: "IBM Plex Sans"
         }
 
@@ -128,9 +127,15 @@ Pane {
                         }
 
                         Label {
-                            text: modelData.availability === "playable" ? "Ready to play" : "Restricted"
-                            color: modelData.availability === "playable" ? "#8dd6a5" : "#ffb27f"
+                            Layout.fillWidth: true
+                            text: modelData.availability === "playable"
+                                  ? (modelData.currentProgramTitle ? modelData.currentProgramTitle : "Guide unavailable")
+                                  : "Restricted"
+                            color: modelData.availability === "playable"
+                                   ? (modelData.currentProgramTitle ? "#8dd6a5" : "#8ea7b9")
+                                   : "#ffb27f"
                             font.family: "IBM Plex Sans"
+                            elide: Text.ElideRight
                         }
                     }
                 }

@@ -75,6 +75,21 @@ ToolButton {
                     ctx.lineTo(5.2, 13.2)
                     ctx.stroke()
                     break
+                case "guide":
+                    ctx.beginPath()
+                    ctx.roundRect(3, 4, 14, 12.5, 2.5)
+                    ctx.stroke()
+                    ctx.beginPath()
+                    ctx.moveTo(3, 7.5)
+                    ctx.lineTo(17, 7.5)
+                    ctx.moveTo(7.6, 4)
+                    ctx.lineTo(7.6, 16.5)
+                    ctx.moveTo(12.4, 7.5)
+                    ctx.lineTo(12.4, 16.5)
+                    ctx.moveTo(7.6, 12)
+                    ctx.lineTo(17, 12)
+                    ctx.stroke()
+                    break
                 case "volume-down":
                     drawSpeaker()
                     ctx.beginPath()

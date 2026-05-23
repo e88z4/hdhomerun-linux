@@ -11,10 +11,17 @@
 #include <QStringList>
 #include <QTimer>
 #include <QUrl>
+#include <QDateTime>
 
 namespace {
 constexpr auto kDefaultBackendUrl = "http://127.0.0.1:38080";
 constexpr auto kDefaultBackendExecutable = "hdhomerun-backend";
+
+qint64 defaultGuideWindowStart()
+{
+    const auto now = QDateTime::currentSecsSinceEpoch();
+    return now - (now % 1800);
+}
 }
 
 AppController::AppController(QObject *parent)
@@ -22,6 +29,11 @@ AppController::AppController(QObject *parent)
     , m_backendProcess(nullptr)
     , m_backendBaseUrl(qEnvironmentVariable("HDHR_BACKEND_URL", kDefaultBackendUrl))
     , m_selectedDeviceIndex(-1)
+    , m_guideVisible(false)
+    , m_guideLoading(false)
+    , m_guideWindowStart(defaultGuideWindowStart())
+    , m_guideDurationHours(24)
+    , m_guideEndpointAvailable(true)
     , m_shellPhase(QStringLiteral("launching"))
     , m_embeddedPlaybackEnabled(false)
     , m_diagnosticsExpanded(true)
@@ -43,6 +55,11 @@ AppController::~AppController()
 QVariantList AppController::devices() const { return m_devices; }
 int AppController::selectedDeviceIndex() const { return m_selectedDeviceIndex; }
 QVariantList AppController::channels() const { return m_channels; }
+QVariantList AppController::guideChannels() const { return m_guideChannels; }
+bool AppController::guideVisible() const { return m_guideVisible; }
+bool AppController::guideLoading() const { return m_guideLoading; }
+qint64 AppController::guideWindowStart() const { return m_guideWindowStart; }
+int AppController::guideDurationHours() const { return m_guideDurationHours; }
 QString AppController::shellPhase() const { return m_shellPhase; }
 QString AppController::currentChannelRef() const { return m_currentChannelRef; }
 QString AppController::stageTitle() const { return m_stageTitle; }
@@ -156,6 +173,44 @@ void AppController::playAdjacentChannel(int direction)
     playChannel(channelRef);
 }
 
+void AppController::toggleGuide()
+{
+    if (!m_guideEndpointAvailable) {
+        setStageWarning(QStringLiteral("The connected backend does not expose guide support. Stop any older backend already running on 127.0.0.1:38080 and relaunch the packaged app."));
+        return;
+    }
+
+    if (!m_guideVisible && selectedDeviceRef().isEmpty()) {
+        setStageWarning(QStringLiteral("Select a device before opening the guide"));
+        return;
+    }
+
+    setGuideVisible(!m_guideVisible);
+    if (m_guideVisible) {
+        loadGuide();
+    }
+}
+
+void AppController::shiftGuideWindow(int deltaHours)
+{
+    if (deltaHours == 0) {
+        return;
+    }
+
+    setGuideWindowStart(m_guideWindowStart + (static_cast<qint64>(deltaHours) * 3600));
+    if (m_guideVisible) {
+        loadGuide();
+    }
+}
+
+void AppController::jumpGuideToNow()
+{
+    setGuideWindowStart(defaultGuideWindowStart());
+    if (m_guideVisible) {
+        loadGuide();
+    }
+}
+
 void AppController::toggleDiagnostics()
 {
     setDiagnosticsExpanded(!m_diagnosticsExpanded);
@@ -168,6 +223,15 @@ void AppController::setDiagnosticsExpanded(bool expanded)
     }
     m_diagnosticsExpanded = expanded;
     emit diagnosticsExpandedChanged();
+}
+
+void AppController::setGuideVisible(bool visible)
+{
+    if (m_guideVisible == visible) {
+        return;
+    }
+    m_guideVisible = visible;
+    emit guideVisibleChanged();
 }
 
 void AppController::getJson(const QString &path, const SuccessHandler &onSuccess, const ErrorHandler &onError)
@@ -325,8 +389,24 @@ void AppController::loadBootstrap()
     getJson(
         QStringLiteral("/api/bootstrap"),
         [this](const QJsonObject &payload) {
+            bool guideEndpointAvailable = false;
+            const auto endpoints = payload.value(QStringLiteral("availableContractEndpoints")).toArray();
+            for (const auto &value : endpoints) {
+                const auto endpoint = value.toObject();
+                if (endpoint.value(QStringLiteral("name")).toString() == QStringLiteral("guide")) {
+                    guideEndpointAvailable = true;
+                    break;
+                }
+            }
+            m_guideEndpointAvailable = guideEndpointAvailable;
+
             const auto warnings = payload.value(QStringLiteral("warnings")).toArray();
-            setStageWarning(warnings.isEmpty() ? QString() : warnings.first().toString());
+            QString warning = warnings.isEmpty() ? QString() : warnings.first().toString();
+            if (!m_guideEndpointAvailable) {
+                warning = QStringLiteral("The connected backend is older than this client and does not expose guide support. Stop any backend already running on 127.0.0.1:38080 and relaunch the packaged app.");
+            }
+
+            setStageWarning(warning);
             loadDevices();
             loadPlaybackCurrent();
         },
@@ -350,6 +430,15 @@ void AppController::loadLineup()
         QStringLiteral("/api/lineup"),
         [this](const QJsonObject &payload) {
             const auto channels = payload.value(QStringLiteral("channels")).toArray();
+            bool hasGuideTitles = false;
+            for (const auto &value : channels) {
+                const auto channel = value.toObject();
+                if (channel.contains(QStringLiteral("currentProgramTitle"))) {
+                    hasGuideTitles = true;
+                    break;
+                }
+            }
+
             setChannels(jsonArrayToVariantList(channels));
 
             if (m_channels.isEmpty() && !selectedDeviceRef().isEmpty()) {
@@ -360,10 +449,39 @@ void AppController::loadLineup()
             const auto warnings = payload.value(QStringLiteral("warnings")).toArray();
             if (!warnings.isEmpty()) {
                 setStageWarning(warnings.first().toString());
+            } else if (!hasGuideTitles) {
+                setStageWarning(QStringLiteral("The connected backend returned channels without guide metadata. Stop any older backend already running on 127.0.0.1:38080 and relaunch the packaged app."));
+            }
+
+            if (m_guideVisible) {
+                loadGuide();
             }
         },
         [this](const QString &message) {
             setChannels({});
+            setStageWarning(message);
+            setGuideChannels({});
+        });
+}
+
+void AppController::loadGuide()
+{
+    if (selectedDeviceRef().isEmpty()) {
+        setGuideLoading(false);
+        setGuideChannels({});
+        return;
+    }
+
+    setGuideLoading(true);
+
+    getJson(
+        QStringLiteral("/api/guide?start=%1&durationHours=%2")
+            .arg(m_guideWindowStart)
+            .arg(m_guideDurationHours),
+        [this](const QJsonObject &payload) { applyGuideResponse(payload); },
+        [this](const QString &message) {
+            setGuideLoading(false);
+            setGuideChannels({});
             setStageWarning(message);
         });
 }
@@ -392,6 +510,9 @@ void AppController::refreshSelectedData()
 {
     if (selectedDeviceRef().isEmpty()) {
         setChannels({});
+        setGuideChannels({});
+        setGuideVisible(false);
+        setGuideLoading(false);
         setDiagnosticsRows({});
         setDiagnosticsSummary(QStringLiteral("Select a device to load diagnostics"));
         if (!m_devices.isEmpty()) {
@@ -425,6 +546,28 @@ void AppController::applyDevicesResponse(const QJsonObject &payload)
         }
     }
     setSelectedDeviceIndex(selectedIndex);
+
+    const auto warnings = payload.value(QStringLiteral("warnings")).toArray();
+    if (!warnings.isEmpty()) {
+        setStageWarning(warnings.first().toString());
+    }
+}
+
+void AppController::applyGuideResponse(const QJsonObject &payload)
+{
+    setGuideLoading(false);
+
+    setGuideWindowStart(payload.value(QStringLiteral("windowStart")).toVariant().toLongLong());
+    if (payload.contains(QStringLiteral("durationHours"))) {
+        setGuideDurationHours(payload.value(QStringLiteral("durationHours")).toInt());
+    }
+
+    const auto state = payload.value(QStringLiteral("state")).toString();
+    if (state == QStringLiteral("ready")) {
+        setGuideChannels(jsonArrayToVariantList(payload.value(QStringLiteral("channels")).toArray()));
+    } else {
+        setGuideChannels({});
+    }
 
     const auto warnings = payload.value(QStringLiteral("warnings")).toArray();
     if (!warnings.isEmpty()) {
@@ -582,6 +725,42 @@ void AppController::setChannels(const QVariantList &channels)
     }
     m_channels = channels;
     emit channelsChanged();
+}
+
+void AppController::setGuideChannels(const QVariantList &channels)
+{
+    if (m_guideChannels == channels) {
+        return;
+    }
+    m_guideChannels = channels;
+    emit guideChannelsChanged();
+}
+
+void AppController::setGuideLoading(bool loading)
+{
+    if (m_guideLoading == loading) {
+        return;
+    }
+    m_guideLoading = loading;
+    emit guideLoadingChanged();
+}
+
+void AppController::setGuideWindowStart(qint64 start)
+{
+    if (m_guideWindowStart == start) {
+        return;
+    }
+    m_guideWindowStart = start;
+    emit guideWindowStartChanged();
+}
+
+void AppController::setGuideDurationHours(int hours)
+{
+    if (m_guideDurationHours == hours) {
+        return;
+    }
+    m_guideDurationHours = hours;
+    emit guideDurationHoursChanged();
 }
 
 void AppController::setShellPhase(const QString &phase)

@@ -1,4 +1,5 @@
 #include "appcontroller.h"
+#include "idleinhibitor.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -48,8 +49,14 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("hdhomerun-linux-player");
 
     AppController appController;
+    std::unique_ptr<IdleInhibitor> idleInhibitor;
     std::unique_ptr<QQmlApplicationEngine> engine;
     if (!headlessSmokeRun) {
+        idleInhibitor = std::make_unique<IdleInhibitor>();
+        QObject::connect(&appController, &AppController::shellPhaseChanged, idleInhibitor.get(), [&appController, &idleInhibitor]() {
+            idleInhibitor->setPlaybackActive(appController.shellPhase() == QStringLiteral("playing"));
+        });
+
         engine = std::make_unique<QQmlApplicationEngine>();
         engine->rootContext()->setContextProperty(QStringLiteral("appController"), &appController);
         QObject::connect(
@@ -59,6 +66,8 @@ int main(int argc, char *argv[])
             []() { QCoreApplication::exit(EXIT_FAILURE); },
             Qt::QueuedConnection);
         engine->loadFromModule("HDHomeRun.Client", "Main");
+
+        idleInhibitor->setPlaybackActive(appController.shellPhase() == QStringLiteral("playing"));
     } else if (!validateHeadlessQmlModule()) {
         return EXIT_FAILURE;
     }

@@ -1004,3 +1004,46 @@
   - playback controls now behave like an overlay instead of a header toolbar feature
   - the same control model works in windowed and fullscreen playback, which reduces layout switching friction
   - keyboard and pointer-driven control paths remain aligned after the cosmetic refactor
+
+## 2026-05-22T20:43:59Z
+- **Stage**: Guide Data Enrichment - Unit 2 / Unit 4
+- **Implementation Changes**:
+  - added backend/src/guide.rs with a guide-provider abstraction and a SiliconDust guide API current-program resolver powered by `DeviceAuth`
+  - promoted `device_auth` from native discovery into the normalized backend device model so guide requests can reuse the same discovery path as lineup loading
+  - extended `LineupChannel` with optional `currentProgramTitle` metadata and enriched `/api/lineup` responses through backend guide lookup
+  - added guide-response parsing tests plus a lineup contract test that verifies current program titles flow through the API
+  - updated the client channel strip to show the current program title when guide data is present and `Guide unavailable` when it is not
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-2-silicondust-guide-data-plan.md
+- **Validation Executed**:
+  - cargo test --manifest-path backend/Cargo.toml --quiet
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - sh ./packaging/build-and-verify-dist.sh
+- **Outcome**:
+  - the channel strip can now render a real current-program title across the full lineup using SiliconDust device-authorized guide data from discovery
+  - the backend contract remains backward-compatible for clients because the new field is optional
+  - the UI no longer labels playable channels as `Ready to play` when a guide-backed current show title is available instead
+
+## 2026-05-23T00:17:54Z
+- **Stage**: Guide Grid UX - Unit 5
+- **Implementation Changes**:
+  - added `/api/guide` so the backend exposes a selected-device live schedule window with guide entries grouped by lineup channel
+  - extended the guide provider so the same SiliconDust `DeviceAuth` flow can serve both current-program enrichment and full guide-window requests
+  - added a guide grid panel to the Qt client and then refined it so `G` now swaps the bottom area between the compact channel rail and a horizontally scrollable 30-minute-slot EPG surface
+  - moved diagnostics out of the large right-side drawer and into a compact inline block inside the playback stage beside the playback status pill
+  - updated the bottom channel rail so it renders `currentProgramTitle` instead of the stale `Ready to play` placeholder
+  - added client-side stale-backend detection so packaged runs can warn when an older backend on `127.0.0.1:38080` does not expose guide support
+  - added Linux idle inhibition during active playback to block the screensaver and idle sleep timer while the user is watching
+  - recorded the execution slice in aidlc-docs/construction/plans/unit-5-guide-grid-ui-plan.md
+- **Validation Executed**:
+  - cargo test --manifest-path backend/Cargo.toml --quiet
+  - cmake --build build/client
+  - ctest --test-dir build/client --output-on-failure
+  - sh ./packaging/build-and-verify-dist.sh
+  - live verification against `hdhr-10ab47d5` for `/api/lineup` and `/api/guide`
+- **Outcome**:
+  - the backend now serves both lightweight current-title enrichment and a fuller guide window from the same vendor-authorized data source
+  - the client has a working guide surface without adding a second direct guide-fetch path outside the backend contract
+  - the packaged client now makes the stale-backend failure mode explicit instead of silently degrading guide behavior
+  - live playback can keep the display awake without requiring the user to change desktop power settings outside the app
+  - live verification confirmed that the new guide window route returns schedule entries and current-program markers for the real tuner

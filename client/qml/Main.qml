@@ -87,6 +87,12 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "G"
+        context: Qt.ApplicationShortcut
+        onActivated: appController.toggleGuide()
+    }
+
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
@@ -146,9 +152,9 @@ ApplicationWindow {
             }
 
             IconButton {
-                iconKind: "diagnostics"
-                toolTipText: appController.diagnosticsExpanded ? "Hide diagnostics" : "Show diagnostics"
-                onClicked: appController.toggleDiagnostics()
+                iconKind: "guide"
+                toolTipText: appController.guideVisible ? "Hide guide" : "Show guide"
+                onClicked: appController.toggleGuide()
             }
         }
     }
@@ -156,7 +162,7 @@ ApplicationWindow {
     RowLayout {
         anchors.fill: parent
         anchors.margins: window.fullscreenMode ? 0 : 18
-        spacing: window.fullscreenMode ? 0 : 18
+        spacing: 0
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -178,14 +184,31 @@ ApplicationWindow {
                 failureText: appController.stageFailure
                 playbackUrl: appController.playbackUrl
                 embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                diagnosticsSummary: appController.diagnosticsSummary
+                diagnosticsRows: appController.diagnosticsRows
                 retryEnabled: appController.shellPhase === "playback_failed"
                 onExitFullscreenRequested: window.exitFullscreen()
                 onToggleFullscreenRequested: window.toggleFullscreen()
                 onRetryRequested: appController.retryPlayback()
             }
 
+            GuideGrid {
+                visible: !window.fullscreenMode && appController.guideVisible
+                Layout.fillWidth: true
+                Layout.preferredHeight: 240
+                Layout.minimumHeight: 220
+                Layout.maximumHeight: 280
+                guideChannels: appController.guideChannels
+                currentChannelRef: appController.currentChannelRef
+                windowStart: appController.guideWindowStart
+                durationHours: appController.guideDurationHours
+                loading: appController.guideLoading
+                onChannelActivated: appController.playChannel(channelRef)
+                onJumpToNowRequested: appController.jumpGuideToNow()
+            }
+
             ChannelRail {
-                visible: !window.fullscreenMode
+                visible: !window.fullscreenMode && !appController.guideVisible
                 Layout.fillWidth: true
                 Layout.preferredHeight: 170
                 Layout.minimumHeight: 150
@@ -200,16 +223,6 @@ ApplicationWindow {
                     appController.playChannel(channelRef)
                 }
             }
-        }
-
-        DiagnosticsDrawer {
-            visible: !window.fullscreenMode
-            Layout.preferredWidth: window.fullscreenMode ? 0 : (appController.diagnosticsExpanded ? 320 : 52)
-            Layout.maximumWidth: window.fullscreenMode ? 0 : Number.POSITIVE_INFINITY
-            Layout.fillHeight: true
-            expanded: appController.diagnosticsExpanded
-            summaryText: appController.diagnosticsSummary
-            diagnosticsRows: appController.diagnosticsRows
         }
     }
 }

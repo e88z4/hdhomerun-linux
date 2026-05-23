@@ -8,6 +8,8 @@ This directory contains the local backend service used by HDHomeRun Linux Player
 - canonical remembered-state persistence in the XDG state directory
 - bundled backend process used by the desktop client and packaged formats
 - playback orchestration for client-managed embedded playback and development fallback modes
+- SiliconDust guide enrichment for current-program titles on lineup entries
+- a guide endpoint that exposes a selected-device live schedule window for the client guide grid
 
 ## Normal Usage
 
@@ -27,6 +29,8 @@ Useful overrides:
 
 - `HDHR_BACKEND_BIND`: override the bind address, for example `127.0.0.1:39090`
 - `HDHR_BACKEND_PLAYER_MODE`: choose playback adapter mode; packaged runs default to `client`
+
+Current-program titles are fetched automatically from `https://api.hdhomerun.com/api/guide` using the `DeviceAuth` value exposed by discovery.
 
 ## Test
 

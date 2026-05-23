@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Multimedia Network Quick QuickControls2 Test)
+find_package(Qt6 6.5 REQUIRED COMPONENTS DBus Multimedia Network Quick QuickControls2 Test)
 
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0004 NEW)
@@ -22,6 +22,8 @@ qt_add_executable(hdhomerun-linux-player
     src/backendlaunchconfig.h
     src/channelnavigation.cpp
     src/channelnavigation.h
+    src/idleinhibitor.cpp
+    src/idleinhibitor.h
 )
 
 qt_add_qml_module(hdhomerun-linux-player
@@ -31,6 +33,7 @@ qt_add_qml_module(hdhomerun-linux-player
     QML_FILES
         qml/Main.qml
         qml/components/ChannelRail.qml
+        qml/components/GuideGrid.qml
         qml/components/IconButton.qml
         qml/components/PlaybackStage.qml
         qml/components/DiagnosticsDrawer.qml
@@ -38,6 +41,7 @@ qt_add_qml_module(hdhomerun-linux-player
 
 target_link_libraries(hdhomerun-linux-player
     PRIVATE
+    Qt6::DBus
     Qt6::Network
     Qt6::Multimedia
         Qt6::Quick

@@ -10,6 +10,7 @@ use crate::device::{
     SharedDeviceDiscovery, SharedLineupProvider, SharedTunerDiagnosticsProvider,
     StaticDeviceDiscovery, StaticLineupProvider, StaticTunerDiagnosticsProvider,
 };
+use crate::guide::{NativeGuideProvider, SharedGuideProvider, StaticGuideProvider};
 use crate::http::routes::router;
 use crate::models::{
     BackendRuntimeState, BackendRuntimeStatus, LaunchMode, LineupChannel, TunerDiagnostic,
@@ -23,6 +24,7 @@ pub struct AppState {
     state_store: StateStore,
     device_discovery: SharedDeviceDiscovery,
     lineup_provider: SharedLineupProvider,
+    guide_provider: SharedGuideProvider,
     tuner_diagnostics_provider: SharedTunerDiagnosticsProvider,
     playback_service: SharedPlaybackService,
     lineup_cache: Arc<RwLock<HashMap<String, Vec<LineupChannel>>>>,
@@ -42,6 +44,7 @@ impl AppState {
             state_store: StateStore::new(state_dir.clone()),
             device_discovery: NativeDeviceDiscovery::shared(),
             lineup_provider: NativeLineupProvider::shared(),
+            guide_provider: NativeGuideProvider::shared(),
             tuner_diagnostics_provider: NativeTunerDiagnosticsProvider::shared(),
             playback_service: PlaybackService::shared_default(state_dir.clone()),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -67,11 +70,22 @@ impl AppState {
         lineups: HashMap<String, Result<Vec<LineupChannel>, String>>,
         tuner_diagnostics: HashMap<String, Vec<Result<TunerDiagnostic, String>>>,
     ) -> Self {
+        Self::for_tests_with_guide_fixtures(state_dir, devices, lineups, tuner_diagnostics, HashMap::new())
+    }
+
+    pub fn for_tests_with_guide_fixtures(
+        state_dir: PathBuf,
+        devices: Vec<crate::device::DiscoveredDevice>,
+        lineups: HashMap<String, Result<Vec<LineupChannel>, String>>,
+        tuner_diagnostics: HashMap<String, Vec<Result<TunerDiagnostic, String>>>,
+        guide_programs: HashMap<String, String>,
+    ) -> Self {
         Self::for_tests_with_playback_fixtures(
             state_dir,
             devices,
             lineups,
             tuner_diagnostics,
+            guide_programs,
             StaticPlayerAdapterFixtures::default(),
         )
     }
@@ -81,6 +95,7 @@ impl AppState {
         devices: Vec<crate::device::DiscoveredDevice>,
         lineups: HashMap<String, Result<Vec<LineupChannel>, String>>,
         tuner_diagnostics: HashMap<String, Vec<Result<TunerDiagnostic, String>>>,
+        guide_programs: HashMap<String, String>,
         playback_fixtures: StaticPlayerAdapterFixtures,
     ) -> Self {
         Self {
@@ -93,6 +108,7 @@ impl AppState {
             state_store: StateStore::new(state_dir),
             device_discovery: StaticDeviceDiscovery::shared(devices),
             lineup_provider: StaticLineupProvider::shared(lineups),
+            guide_provider: StaticGuideProvider::shared(guide_programs),
             tuner_diagnostics_provider: StaticTunerDiagnosticsProvider::shared(tuner_diagnostics),
             playback_service: PlaybackService::shared_with_adapter(StaticPlayerAdapter::shared(playback_fixtures)),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -111,6 +127,10 @@ impl AppState {
 
     pub fn lineup_provider(&self) -> SharedLineupProvider {
         Arc::clone(&self.lineup_provider)
+    }
+
+    pub fn guide_provider(&self) -> SharedGuideProvider {
+        Arc::clone(&self.guide_provider)
     }
 
     pub fn tuner_diagnostics_provider(&self) -> SharedTunerDiagnosticsProvider {

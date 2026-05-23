@@ -1,6 +1,7 @@
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use serde::Deserialize;
 use tokio::task;
 
 use crate::app::AppState;
@@ -8,7 +9,8 @@ use crate::device::{build_devices_response, reconcile_remembered_context};
 use crate::error::AppError;
 use crate::models::{
     BootstrapMode, BootstrapResult, ContractEndpointDescriptor, ContractEndpointStatus,
-    DeviceSelectionRequest, DevicesResponse, HealthStatus, LineupChannel, LineupResponse, LineupState,
+    DeviceSelectionRequest, DevicesResponse, GuideResponse, GuideState, HealthStatus, LineupChannel,
+    LineupResponse, LineupState,
     PlaybackCommandRequest, PlaybackCommandResponse, PlaybackCurrentResponse,
     RememberedContext, RuntimeStateResponse, TunerDiagnostic, TunerDiagnosticsResponse,
     TunerDiagnosticsState,
@@ -22,6 +24,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/devices", get(devices))
         .route("/api/devices/select", post(select_device))
         .route("/api/lineup", get(lineup))
+        .route("/api/guide", get(guide))
         .route("/api/tuners", get(tuners))
         .route("/api/playback/current", get(playback_current))
         .route("/api/playback/start", post(playback_start))
@@ -175,16 +178,23 @@ async fn lineup(State(state): State<AppState>) -> Result<Json<LineupResponse>, A
 
     match fetch_lineup(&state, selected_device.clone()).await {
         Ok(channels) => {
+            let (channels, guide_warning) =
+                enrich_lineup_with_current_programs(&state, selected_device.clone(), channels).await;
             state
                 .store_cached_lineup(selected_device.device_ref.clone(), channels.clone())
                 .await;
+
+            let mut warnings = Vec::new();
+            if let Some(guide_warning) = guide_warning {
+                warnings.push(guide_warning);
+            }
 
             Ok(Json(LineupResponse {
                 status: ContractEndpointStatus::Available,
                 selected_device_ref: Some(selected_device.device_ref),
                 state: LineupState::Ready,
                 channels,
-                warnings: Vec::new(),
+                warnings,
             }))
         }
         Err(error) => {
@@ -207,6 +217,112 @@ async fn lineup(State(state): State<AppState>) -> Result<Json<LineupResponse>, A
             }))
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GuideQuery {
+    start: Option<i64>,
+    duration_hours: Option<u8>,
+}
+
+async fn guide(
+    State(state): State<AppState>,
+    Query(query): Query<GuideQuery>,
+) -> Result<Json<GuideResponse>, AppError> {
+    let remembered_context = state.state_store().load_context()?;
+    let discovered_devices = discover_devices(&state).await?;
+    let (remembered_context, cleared_stale_device) =
+        reconcile_remembered_context(remembered_context, &discovered_devices);
+
+    if cleared_stale_device {
+        state.state_store().clear_context()?;
+    }
+
+    let selected_device = remembered_context.as_ref().and_then(|context| {
+        context
+            .device_ref
+            .as_deref()
+            .and_then(|device_ref| discovered_devices.iter().find(|device| device.device_ref == device_ref))
+            .cloned()
+    });
+
+    let duration_hours = query.duration_hours.unwrap_or(4).clamp(1, 24);
+    let window_start = query.start.unwrap_or_else(playback_timestamp_unix_now);
+
+    let Some(selected_device) = selected_device else {
+        return Ok(Json(GuideResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: None,
+            state: GuideState::SelectionRequired,
+            window_start,
+            duration_hours,
+            channels: Vec::new(),
+            warnings: vec!["select a discovered device before requesting guide data".to_string()],
+        }));
+    };
+
+    let mut warnings = Vec::new();
+    let channels = match fetch_lineup(&state, selected_device.clone()).await {
+        Ok(channels) => {
+            state
+                .store_cached_lineup(selected_device.device_ref.clone(), channels.clone())
+                .await;
+            channels
+        }
+        Err(error) => match state.cached_lineup(&selected_device.device_ref).await {
+            Some(channels) => {
+                warnings.push(format!(
+                    "lineup refresh failed and the last successful lineup is being reused for guide data: {error}"
+                ));
+                channels
+            }
+            None => {
+                return Ok(Json(GuideResponse {
+                    status: ContractEndpointStatus::Available,
+                    selected_device_ref: Some(selected_device.device_ref),
+                    state: GuideState::Unavailable,
+                    window_start,
+                    duration_hours,
+                    channels: Vec::new(),
+                    warnings: vec!["guide data is currently unavailable for the selected device".to_string()],
+                }));
+            }
+        },
+    };
+
+    let guide_provider = state.guide_provider();
+    let guide_channels = match task::spawn_blocking(move || {
+        guide_provider.schedule_for(&selected_device, &channels, window_start, duration_hours)
+    })
+    .await
+    {
+        Ok(Ok(guide_channels)) => guide_channels,
+        Ok(Err(error)) => {
+            warnings.push(format!("guide data is unavailable: {error}"));
+            Vec::new()
+        }
+        Err(error) => {
+            warnings.push(format!("guide lookup task failed: {error}"));
+            Vec::new()
+        }
+    };
+
+    let state_value = if guide_channels.is_empty() {
+        GuideState::Unavailable
+    } else {
+        GuideState::Ready
+    };
+
+    Ok(Json(GuideResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: remembered_context.and_then(|context| context.device_ref),
+        state: state_value,
+        window_start,
+        duration_hours,
+        channels: guide_channels,
+        warnings,
+    }))
 }
 
 async fn tuners(State(state): State<AppState>) -> Result<Json<TunerDiagnosticsResponse>, AppError> {
@@ -419,6 +535,11 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
             status: ContractEndpointStatus::Available,
         },
         ContractEndpointDescriptor {
+            name: "guide".to_string(),
+            path: "/api/guide".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
             name: "tuners".to_string(),
             path: "/api/tuners".to_string(),
             status: ContractEndpointStatus::Available,
@@ -451,6 +572,10 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
     ]
 }
 
+fn playback_timestamp_unix_now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
 async fn discover_devices(state: &AppState) -> Result<Vec<crate::device::DiscoveredDevice>, AppError> {
     let discovery = state.device_discovery();
     task::spawn_blocking(move || discovery.discover())
@@ -466,6 +591,31 @@ async fn fetch_lineup(
     task::spawn_blocking(move || provider.lineup_for(&device))
         .await
         .map_err(|error| AppError::internal(format!("lineup task failed: {error}")))?
+}
+
+async fn enrich_lineup_with_current_programs(
+    state: &AppState,
+    device: crate::device::DiscoveredDevice,
+    channels: Vec<LineupChannel>,
+) -> (Vec<LineupChannel>, Option<String>) {
+    let guide_provider = state.guide_provider();
+    let channels_for_lookup = channels.clone();
+
+    let programs = match task::spawn_blocking(move || guide_provider.current_programs_for(&device, &channels_for_lookup)).await {
+        Ok(Ok(programs)) => programs,
+        Ok(Err(error)) => return (channels, Some(format!("guide data is unavailable: {error}"))),
+        Err(error) => return (channels, Some(format!("guide lookup task failed: {error}"))),
+    };
+
+    let channels = channels
+        .into_iter()
+        .map(|mut channel| {
+            channel.current_program_title = programs.get(&channel.channel_ref).cloned();
+            channel
+        })
+        .collect();
+
+    (channels, None)
 }
 
 async fn fetch_tuner_diagnostics(

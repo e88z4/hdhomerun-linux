@@ -19,6 +19,7 @@ pub struct DiscoveredDevice {
     pub device_id: String,
     pub friendly_name: String,
     pub base_url: String,
+    pub device_auth: Option<String>,
     pub lineup_url: Option<String>,
     pub tuner_count: u8,
     pub is_legacy: bool,
@@ -313,6 +314,7 @@ pub fn normalize_discovery_results(results: &[ffi::HdhomerunDiscoverDeviceV3]) -
         .map(|result| {
             let device_id = format!("{:08X}", result.device_id);
             let base_url = ffi::char_array_to_string(&result.base_url);
+            let device_auth = ffi::char_array_to_string(&result.device_auth);
             let lineup_url = ffi::char_array_to_string(&result.lineup_url);
 
             DiscoveredDevice {
@@ -320,6 +322,7 @@ pub fn normalize_discovery_results(results: &[ffi::HdhomerunDiscoverDeviceV3]) -
                 friendly_name: format!("HDHomeRun {}", device_id),
                 device_id,
                 base_url,
+                device_auth: (!device_auth.is_empty()).then_some(device_auth),
                 lineup_url: (!lineup_url.is_empty()).then_some(lineup_url),
                 tuner_count: result.tuner_count,
                 is_legacy: result.is_legacy,
@@ -377,6 +380,7 @@ pub fn normalize_lineup_entries(entries: Vec<LineupEntryWire>) -> Vec<LineupChan
                 channel_ref: format!("channel:{}", entry.guide_number),
                 guide_number: entry.guide_number,
                 guide_name: entry.guide_name,
+                current_program_title: None,
                 tags,
                 playback_url,
                 availability,
@@ -554,6 +558,7 @@ mod tests {
         let results = [HdhomerunDiscoverDeviceV3 {
             device_id: 0x1234ABCD,
             tuner_count: 4,
+            device_auth: char_buf("deviceauth123"),
             base_url: char_buf("http://192.168.1.10"),
             lineup_url: char_buf("http://192.168.1.10/lineup.json"),
             ..HdhomerunDiscoverDeviceV3::default()
@@ -563,6 +568,7 @@ mod tests {
         assert_eq!(normalized.len(), 1);
         assert_eq!(normalized[0].device_ref, "hdhr-1234abcd");
         assert_eq!(normalized[0].device_id, "1234ABCD");
+        assert_eq!(normalized[0].device_auth.as_deref(), Some("deviceauth123"));
         assert_eq!(normalized[0].lineup_url.as_deref(), Some("http://192.168.1.10/lineup.json"));
     }
 
@@ -574,6 +580,7 @@ mod tests {
                 device_id: "1234ABCD".to_string(),
                 friendly_name: "HDHomeRun 1234ABCD".to_string(),
                 base_url: "http://192.168.1.10".to_string(),
+                device_auth: None,
                 lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                 tuner_count: 4,
                 is_legacy: false,
@@ -605,6 +612,7 @@ mod tests {
                 device_id: "1234ABCD".to_string(),
                 friendly_name: "HDHomeRun 1234ABCD".to_string(),
                 base_url: "http://192.168.1.10".to_string(),
+                device_auth: None,
                 lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                 tuner_count: 4,
                 is_legacy: false,
@@ -667,6 +675,7 @@ mod tests {
                     device_id: "1234ABCD".to_string(),
                     friendly_name: "HDHomeRun 1234ABCD".to_string(),
                     base_url: "http://192.168.1.10".to_string(),
+                    device_auth: None,
                     lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                     tuner_count: 4,
                     is_legacy: false,

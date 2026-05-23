@@ -9,7 +9,10 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 - live TV playback for playable HDHomeRun channels
 - automatic device discovery on the local network
 - bottom scrollable channel strip for quick switching
-- tuner diagnostics in a side drawer
+- SiliconDust guide-backed current-show titles in the channel strip
+- a `G` toggle that swaps the bottom strip between the channel list and a full EPG grid
+- compact tuner diagnostics embedded into the playback stage instead of a dedicated side drawer
+- playback-time idle inhibition so the screensaver and monitor sleep do not interrupt viewing
 - fullscreen playback mode for a larger viewing surface
 - keyboard shortcuts for fullscreen, channel surfing, and volume control
 - YouTube-style overlay playback controls with a slider-based volume UI in both windowed and fullscreen modes
@@ -77,6 +80,7 @@ On first launch the app should:
 - `Down`: volume down
 - `Right`: next playable channel
 - `Left`: previous playable channel
+- `G`: toggle the guide grid
 
 ## Requirements
 
@@ -103,7 +107,12 @@ No external `mpv` install is required for the packaged application.
 
 - confirm the host has working multimedia support for Qt Multimedia and FFmpeg-backed playback
 - try another known-good channel to rule out a lineup or signal issue
-- open the diagnostics drawer and inspect tuner lock and signal details
+- inspect the inline diagnostics block beside the playback status pill for tuner lock and signal details
+
+### Guide data is missing in the packaged app
+
+- make sure an older backend is not already running on `127.0.0.1:38080`
+- if needed, stop the stale process and relaunch the packaged app so it starts the bundled backend that includes guide support
 
 ## Advanced Runtime Overrides
 
@@ -112,6 +121,8 @@ These are mainly for troubleshooting and development:
 - `HDHR_BACKEND_URL`: point the client at a manually managed backend URL instead of the default loopback address
 - `HDHR_BACKEND_CMD`: override the backend executable path used by client auto-start
 - `HDHR_BACKEND_BIND`: override the backend bind address when launching the backend manually
+
+Current-program titles are resolved automatically from SiliconDust guide data using the `DeviceAuth` value exposed by discovered HDHomeRun tuners.
 
 ## Project Docs
 

@@ -164,6 +164,7 @@ pub struct LineupChannel {
     pub channel_ref: String,
     pub guide_number: String,
     pub guide_name: String,
+    pub current_program_title: Option<String>,
     pub tags: Vec<String>,
     pub playback_url: Option<String>,
     pub availability: ChannelAvailability,
@@ -186,6 +187,49 @@ pub struct LineupResponse {
     pub selected_device_ref: Option<String>,
     pub state: LineupState,
     pub channels: Vec<LineupChannel>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum GuideState {
+    Ready,
+    Unavailable,
+    SelectionRequired,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GuideEntry {
+    pub start_time: i64,
+    pub end_time: i64,
+    pub title: String,
+    pub episode_title: Option<String>,
+    pub synopsis: Option<String>,
+    pub image_url: Option<String>,
+    pub is_current: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GuideChannel {
+    pub channel_ref: String,
+    pub guide_number: String,
+    pub guide_name: String,
+    pub current_program_title: Option<String>,
+    pub image_url: Option<String>,
+    pub entries: Vec<GuideEntry>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GuideResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub state: GuideState,
+    pub window_start: i64,
+    pub duration_hours: u8,
+    pub channels: Vec<GuideChannel>,
     pub warnings: Vec<String>,
 }
 
