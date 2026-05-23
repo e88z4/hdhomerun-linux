@@ -18,6 +18,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     env:
+      HDHR_LIBHDHOMERUN_DIR: ${{ github.workspace }}/.vendor/libhdhomerun
       QT_QPA_PLATFORM: offscreen
 
     steps:
@@ -25,6 +26,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Check out libhdhomerun vendor sources
+        uses: actions/checkout@v4
+        with:
+          repository: Silicondust/libhdhomerun
+          path: .vendor/libhdhomerun
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Resolve release metadata
         id: meta

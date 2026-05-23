@@ -8,9 +8,19 @@ fn main() {
     }
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
-    let lib_dir = manifest_dir.join("../../libhdhomerun");
+    let lib_dir = env::var("HDHR_LIBHDHOMERUN_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| manifest_dir.join("../../libhdhomerun"));
+
+    if !lib_dir.join("hdhomerun_channels.c").is_file() {
+        panic!(
+            "libhdhomerun sources were not found at {}. Set HDHR_LIBHDHOMERUN_DIR or provide the sibling libhdhomerun checkout.",
+            lib_dir.display()
+        );
+    }
 
     println!("cargo:rerun-if-changed={}", lib_dir.display());
+    println!("cargo:rerun-if-env-changed=HDHR_LIBHDHOMERUN_DIR");
 
     let mut build = cc::Build::new();
     build
