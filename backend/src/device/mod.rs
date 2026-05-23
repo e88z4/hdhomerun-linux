@@ -381,6 +381,7 @@ pub fn normalize_lineup_entries(entries: Vec<LineupEntryWire>) -> Vec<LineupChan
                 guide_number: entry.guide_number,
                 guide_name: entry.guide_name,
                 current_program_title: None,
+                image_url: None,
                 tags,
                 playback_url,
                 availability,

@@ -165,6 +165,7 @@ pub struct LineupChannel {
     pub guide_number: String,
     pub guide_name: String,
     pub current_program_title: Option<String>,
+    pub image_url: Option<String>,
     pub tags: Vec<String>,
     pub playback_url: Option<String>,
     pub availability: ChannelAvailability,

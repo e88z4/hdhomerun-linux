@@ -56,6 +56,7 @@ async fn guide_endpoint_returns_channel_schedule_for_selected_device() {
             guide_number: "5.1".to_string(),
             guide_name: "News".to_string(),
             current_program_title: None,
+            image_url: None,
             tags: vec![],
             playback_url: Some("http://192.168.1.10/auto/v5.1".to_string()),
             availability: ChannelAvailability::Playable,

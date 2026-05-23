@@ -233,14 +233,37 @@ Pane {
                                     anchors.topMargin: 10
                                     spacing: 3
 
-                                    Label {
-                                        text: rowItem.channelData.guideNumber + "  " + rowItem.channelData.guideName
-                                        color: "#eff7fb"
-                                        font.family: "IBM Plex Sans"
-                                        font.pixelSize: 15
-                                        font.bold: true
-                                        elide: Text.ElideRight
+                                    RowLayout {
                                         width: parent.width
+                                        spacing: 8
+
+                                        Rectangle {
+                                            implicitWidth: 28
+                                            implicitHeight: 28
+                                            radius: 8
+                                            color: "#10232f"
+                                            border.color: "#23445b"
+                                            visible: !!rowItem.channelData.imageUrl
+
+                                            Image {
+                                                anchors.fill: parent
+                                                anchors.margins: 3
+                                                source: rowItem.channelData.imageUrl ? rowItem.channelData.imageUrl : ""
+                                                asynchronous: true
+                                                fillMode: Image.PreserveAspectFit
+                                                cache: true
+                                            }
+                                        }
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: rowItem.channelData.guideNumber + "  " + rowItem.channelData.guideName
+                                            color: "#eff7fb"
+                                            font.family: "IBM Plex Sans"
+                                            font.pixelSize: 15
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                        }
                                     }
 
                                     Label {
@@ -262,12 +285,14 @@ Pane {
 
                                     required property var modelData
                                     property var entryData: modelData
+                                    readonly property bool showArtwork: !!entryData.imageUrl && width >= 220
 
                                     x: root.entryX(entryData.startTime)
                                     y: 8
                                     width: root.entryWidth(entryData.startTime, entryData.endTime)
                                     height: root.rowHeight - 16
                                     radius: 14
+                                    clip: true
                                     color: entryData.isCurrent ? "#2a6b52" : "#1a3243"
                                     border.color: entryData.isCurrent ? "#8dd6a5" : "#35617b"
 
@@ -276,28 +301,54 @@ Pane {
                                         onClicked: root.channelActivated(rowItem.channelData.channelRef)
                                     }
 
-                                    Column {
+                                    RowLayout {
                                         anchors.fill: parent
-                                        anchors.margins: 10
-                                        spacing: 2
+                                        anchors.leftMargin: 12
+                                        anchors.rightMargin: 12
+                                        anchors.topMargin: 8
+                                        anchors.bottomMargin: 8
+                                        spacing: 8
 
-                                        Label {
-                                            text: entryRect.entryData.title
-                                            color: "#eff7fb"
-                                            font.family: "IBM Plex Sans"
-                                            font.pixelSize: 13
-                                            font.bold: true
-                                            elide: Text.ElideRight
-                                            width: parent.width
+                                        Image {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            Layout.preferredWidth: 44
+                                            Layout.preferredHeight: 30
+                                            visible: entryRect.showArtwork
+                                            source: entryRect.entryData.imageUrl ? entryRect.entryData.imageUrl : ""
+                                            asynchronous: true
+                                            fillMode: Image.PreserveAspectFit
+                                            cache: true
                                         }
 
-                                        Label {
-                                            text: root.formatStamp(entryRect.entryData.startTime, "h:mm AP")
-                                                  + " - "
-                                                  + root.formatStamp(entryRect.entryData.endTime, "h:mm AP")
-                                            color: "#c5d8e5"
-                                            font.family: "IBM Plex Sans"
-                                            font.pixelSize: 11
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            spacing: 2
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: entryRect.entryData.title
+                                                color: "#eff7fb"
+                                                font.family: "IBM Plex Sans"
+                                                font.pixelSize: 13
+                                                font.bold: true
+                                                leftPadding: 1
+                                                rightPadding: 1
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: root.formatStamp(entryRect.entryData.startTime, "h:mm AP")
+                                                      + " - "
+                                                      + root.formatStamp(entryRect.entryData.endTime, "h:mm AP")
+                                                color: "#c5d8e5"
+                                                font.family: "IBM Plex Sans"
+                                                font.pixelSize: 11
+                                                leftPadding: 1
+                                                rightPadding: 1
+                                                elide: Text.ElideRight
+                                            }
                                         }
                                     }
                                 }

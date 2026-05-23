@@ -106,6 +106,24 @@ Pane {
                     anchors.rightMargin: 14
                     spacing: 10
 
+                    Rectangle {
+                        implicitWidth: 34
+                        implicitHeight: 34
+                        radius: 10
+                        color: "#10232f"
+                        border.color: "#23445b"
+                        visible: !!modelData.imageUrl
+
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            source: modelData.imageUrl ? modelData.imageUrl : ""
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectFit
+                            cache: true
+                        }
+                    }
+
                     Label {
                         text: modelData.guideNumber
                         color: "#dff2ff"

@@ -983,6 +983,7 @@ mod tests {
             guide_number: "5.1".to_string(),
             guide_name: "News".to_string(),
             current_program_title: None,
+            image_url: None,
             tags: Vec::new(),
             playback_url: Some("http://127.0.0.1/auto/v5.1".to_string()),
             availability: crate::models::ChannelAvailability::Playable,

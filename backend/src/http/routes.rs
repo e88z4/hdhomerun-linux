@@ -600,9 +600,12 @@ async fn enrich_lineup_with_current_programs(
 ) -> (Vec<LineupChannel>, Option<String>) {
     let guide_provider = state.guide_provider();
     let channels_for_lookup = channels.clone();
+    let window_start = playback_timestamp_unix_now();
 
-    let programs = match task::spawn_blocking(move || guide_provider.current_programs_for(&device, &channels_for_lookup)).await {
-        Ok(Ok(programs)) => programs,
+    let guide_channels = match task::spawn_blocking(move || {
+        guide_provider.schedule_for(&device, &channels_for_lookup, window_start, 4)
+    }).await {
+        Ok(Ok(guide_channels)) => guide_channels,
         Ok(Err(error)) => return (channels, Some(format!("guide data is unavailable: {error}"))),
         Err(error) => return (channels, Some(format!("guide lookup task failed: {error}"))),
     };
@@ -610,7 +613,10 @@ async fn enrich_lineup_with_current_programs(
     let channels = channels
         .into_iter()
         .map(|mut channel| {
-            channel.current_program_title = programs.get(&channel.channel_ref).cloned();
+            if let Some(guide_channel) = guide_channels.iter().find(|guide_channel| guide_channel.channel_ref == channel.channel_ref) {
+                channel.current_program_title = guide_channel.current_program_title.clone();
+                channel.image_url = guide_channel.image_url.clone();
+            }
             channel
         })
         .collect();

@@ -10,6 +10,9 @@ ApplicationWindow {
 
     property int overlayPulse: 0
     property bool fullscreenMode: visibility === Window.FullScreen
+    property real guidePanelHeight: 380
+    property real guidePanelMinHeight: 280
+    property real guidePanelMaxHeight: Math.max(360, height * 0.58)
 
     function bumpOverlay() {
         overlayPulse += 1
@@ -37,6 +40,20 @@ ApplicationWindow {
     visible: true
     title: "HDHomeRun Linux Player"
     color: "#08131c"
+
+    onHeightChanged: {
+        guidePanelHeight = Math.max(guidePanelMinHeight, Math.min(guidePanelHeight, guidePanelMaxHeight))
+    }
+
+    Connections {
+        target: appController
+
+        function onGuideVisibleChanged() {
+            if (appController.guideVisible) {
+                window.guidePanelHeight = Math.max(window.guidePanelHeight, 380)
+            }
+        }
+    }
 
     Shortcut {
         sequence: "F"
@@ -192,19 +209,60 @@ ApplicationWindow {
                 onRetryRequested: appController.retryPlayback()
             }
 
-            GuideGrid {
+            Item {
                 visible: !window.fullscreenMode && appController.guideVisible
                 Layout.fillWidth: true
-                Layout.preferredHeight: 240
-                Layout.minimumHeight: 220
-                Layout.maximumHeight: 280
-                guideChannels: appController.guideChannels
-                currentChannelRef: appController.currentChannelRef
-                windowStart: appController.guideWindowStart
-                durationHours: appController.guideDurationHours
-                loading: appController.guideLoading
-                onChannelActivated: appController.playChannel(channelRef)
-                onJumpToNowRequested: appController.jumpGuideToNow()
+                Layout.preferredHeight: window.guidePanelHeight + 12
+                Layout.minimumHeight: window.guidePanelMinHeight + 12
+                Layout.maximumHeight: window.guidePanelMaxHeight + 12
+
+                Rectangle {
+                    id: guideResizeHandle
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 96
+                    height: 12
+                    radius: 6
+                    color: "#23445b"
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.SizeVerCursor
+                        property real dragStartHeight: 0
+                        property real dragStartY: 0
+
+                        onPressed: function(mouse) {
+                            dragStartHeight = window.guidePanelHeight
+                            dragStartY = mouse.y
+                        }
+
+                        onPositionChanged: function(mouse) {
+                            if (!pressed) {
+                                return
+                            }
+
+                            const delta = mouse.y - dragStartY
+                            window.guidePanelHeight = Math.max(
+                                window.guidePanelMinHeight,
+                                Math.min(window.guidePanelMaxHeight, dragStartHeight - delta)
+                            )
+                        }
+                    }
+                }
+
+                GuideGrid {
+                    anchors.top: guideResizeHandle.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    guideChannels: appController.guideChannels
+                    currentChannelRef: appController.currentChannelRef
+                    windowStart: appController.guideWindowStart
+                    durationHours: appController.guideDurationHours
+                    loading: appController.guideLoading
+                    onChannelActivated: appController.playChannel(channelRef)
+                    onJumpToNowRequested: appController.jumpGuideToNow()
+                }
             }
 
             ChannelRail {

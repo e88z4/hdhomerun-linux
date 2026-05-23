@@ -270,6 +270,7 @@ mod tests {
             guide_number: guide_number.to_string(),
             guide_name: guide_name.to_string(),
             current_program_title: None,
+            image_url: None,
             tags: Vec::new(),
             playback_url: Some(format!("http://192.168.1.10/auto/v{guide_number}")),
             availability: ChannelAvailability::Playable,
