@@ -15,20 +15,144 @@ Pane {
     required property string warningText
     required property string failureText
     required property string playbackUrl
+    required property string playbackMode
     required property bool embeddedPlaybackEnabled
+    required property bool dvrControlsAllowed
     required property string diagnosticsSummary
     required property var diagnosticsRows
     required property bool retryEnabled
+    property string currentRecordingId: ""
+    property string selectedRecordingId: ""
+    property var recordingGroups: []
     signal exitFullscreenRequested()
     signal toggleFullscreenRequested()
     signal retryRequested()
+    signal stopPlaybackRequested()
+    signal playRecordingRequested(string recordingId)
 
     property string surfaceErrorText: ""
     property bool controlOverlayVisible: false
     property bool immersiveOverlayVisible: false
     property real volumeLevel: 1.0
+    property real pendingSeekPosition: 0
     readonly property int volumePercent: Math.round(volumeLevel * 100)
     readonly property bool volumeControlEnabled: embeddedPlaybackEnabled
+    readonly property bool dvrControlMode: dvrControlsAllowed && (playbackMode === "recorded" || selectedRecordingId !== "" || currentRecordingId !== "")
+    readonly property bool surfaceOverlayEnabled: immersiveMode || dvrControlMode
+    readonly property string activeRecordingId: currentRecordingId !== "" ? currentRecordingId : selectedRecordingId
+    readonly property var recordingNavigation: findRecordingNavigation(activeRecordingId)
+    readonly property bool seekControlEnabled: dvrControlMode && player.seekable && player.duration > 0
+
+    function formatPlaybackTime(milliseconds) {
+        if (milliseconds <= 0) {
+            return "00:00"
+        }
+
+        const totalSeconds = Math.floor(milliseconds / 1000)
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+        const seconds = totalSeconds % 60
+
+        if (hours > 0) {
+            return hours + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0")
+        }
+
+        return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0")
+    }
+
+    function findRecordingNavigation(recordingId) {
+        if (!recordingId) {
+            return { previousId: "", nextId: "" }
+        }
+
+        for (const group of recordingGroups) {
+            const recordings = group.recordings || []
+            for (let index = 0; index < recordings.length; index += 1) {
+                const recording = recordings[index]
+                if (recording.recordingId === recordingId) {
+                    return {
+                        previousId: index > 0 ? recordings[index - 1].recordingId : "",
+                        nextId: index + 1 < recordings.length ? recordings[index + 1].recordingId : ""
+                    }
+                }
+            }
+        }
+
+        return { previousId: "", nextId: "" }
+    }
+
+    function togglePlayPause() {
+        if (!dvrControlMode) {
+            return
+        }
+
+        if (player.playbackState === MediaPlayer.PlayingState) {
+            player.pause()
+            return
+        }
+
+        if (player.playbackState === MediaPlayer.PausedState) {
+            player.play()
+            return
+        }
+
+        if (activeRecordingId !== "") {
+            playRecordingRequested(activeRecordingId)
+        }
+    }
+
+    function restartPlayback() {
+        if (!dvrControlMode) {
+            return
+        }
+
+        if (player.playbackState === MediaPlayer.StoppedState) {
+            if (activeRecordingId !== "") {
+                playRecordingRequested(activeRecordingId)
+            }
+            return
+        }
+
+        player.position = 0
+        player.play()
+    }
+
+    function playAdjacentRecording(direction) {
+        const targetRecordingId = direction < 0 ? recordingNavigation.previousId : recordingNavigation.nextId
+        if (targetRecordingId !== "") {
+            playRecordingRequested(targetRecordingId)
+        }
+    }
+
+    function pointInItem(mouse, item) {
+        if (!item || !item.visible) {
+            return false
+        }
+
+        return mouse.x >= item.x
+            && mouse.x <= item.x + item.width
+            && mouse.y >= item.y
+            && mouse.y <= item.y + item.height
+    }
+
+    function seekBy(deltaMilliseconds) {
+        if (!seekControlEnabled) {
+            return
+        }
+
+        player.position = Math.max(0, Math.min(player.duration, player.position + deltaMilliseconds))
+        pendingSeekPosition = player.position
+        revealOverlay()
+    }
+
+    function stopDvrPlayback() {
+        if (!dvrControlMode) {
+            return
+        }
+
+        stopPlaybackRequested()
+        revealOverlay()
+    }
 
     function revealOverlay() {
         controlOverlayVisible = true
@@ -60,7 +184,7 @@ Pane {
     }
 
     onShellPhaseChanged: {
-        if (immersiveMode) {
+        if (surfaceOverlayEnabled) {
             revealOverlay()
         }
         if (shellPhase === "playback_loading") {
@@ -73,13 +197,14 @@ Pane {
         syncPlayback()
     }
     onEmbeddedPlaybackEnabledChanged: syncPlayback()
-    onImmersiveModeChanged: revealOverlay()
-    onOverlayPulseChanged: revealOverlay()
-    onCurrentTitleChanged: revealOverlay()
-    onCurrentSubtitleChanged: revealOverlay()
-    onWarningTextChanged: revealOverlay()
-    onFailureTextChanged: revealOverlay()
-    onVolumeLevelChanged: revealOverlay()
+    onImmersiveModeChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onOverlayPulseChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onCurrentTitleChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onCurrentSubtitleChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onWarningTextChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onFailureTextChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onVolumeLevelChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onDvrControlModeChanged: pendingSeekPosition = player.position
 
     Timer {
         id: overlayHideTimer
@@ -153,7 +278,6 @@ Pane {
                 implicitHeight: 92
 
                 ColumnLayout {
-                    id: diagnosticsColumn
                     anchors.fill: parent
                     anchors.leftMargin: 14
                     anchors.rightMargin: 14
@@ -272,6 +396,7 @@ Pane {
                         onErrorOccurred: function(error, errorString) {
                             root.surfaceErrorText = errorString
                         }
+                        onPositionChanged: if (!progressSlider.pressed) root.pendingSeekPosition = position
                     }
 
                     AudioOutput {
@@ -287,7 +412,10 @@ Pane {
                     }
 
                     MouseArea {
-                        anchors.fill: parent
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: overlayControlsBar.visible ? overlayControlsBar.top : parent.bottom
                         acceptedButtons: Qt.NoButton
                         hoverEnabled: true
                         enabled: true
@@ -335,10 +463,15 @@ Pane {
 
                     Item {
                         anchors.fill: parent
-                        visible: root.immersiveMode && (root.immersiveOverlayVisible || root.retryEnabled)
+                        visible: root.surfaceOverlayEnabled
+                            && ((root.immersiveMode ? root.immersiveOverlayVisible : root.controlOverlayVisible)
+                                || root.retryEnabled
+                                || volumeSlider.pressed
+                                || progressSlider.pressed)
                         z: 2
 
                         Rectangle {
+                            id: overlayTitleCard
                             anchors.left: parent.left
                             anchors.top: parent.top
                             anchors.margins: 24
@@ -409,15 +542,16 @@ Pane {
                         }
 
                         Rectangle {
+                            id: overlayControlsBar
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.margins: 24
-                            implicitHeight: 68
+                            implicitHeight: root.dvrControlMode ? 98 : 68
                             radius: 20
                             color: "#be09131d"
                             border.color: "#304d61"
-                            visible: root.controlOverlayVisible || volumeSlider.pressed
+                            visible: root.controlOverlayVisible || volumeSlider.pressed || progressSlider.pressed
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -432,80 +566,267 @@ Pane {
                                 }
                             }
 
-                            RowLayout {
+                            ColumnLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                spacing: 14
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 14
+                                spacing: root.dvrControlMode ? 6 : 0
 
-                                IconButton {
-                                    iconKind: "volume-down"
-                                    toolTipText: "Volume down (Page Down key)"
-                                    enabled: root.volumeControlEnabled
-                                    onClicked: root.adjustVolume(-0.05)
-                                }
-
-                                Slider {
-                                    id: volumeSlider
+                                RowLayout {
+                                    visible: root.dvrControlMode
                                     Layout.fillWidth: true
-                                    enabled: root.volumeControlEnabled
-                                    from: 0.0
-                                    to: 1.0
-                                    value: root.volumeLevel
-                                    onMoved: root.volumeLevel = value
-                                    onPressedChanged: if (pressed) root.revealOverlay()
+                                    spacing: 8
 
-                                    background: Rectangle {
-                                        x: volumeSlider.leftPadding
-                                        y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                                        width: volumeSlider.availableWidth
-                                        height: 6
-                                        radius: 3
-                                        color: "#274356"
+                                    Label {
+                                        text: root.formatPlaybackTime(player.position)
+                                        color: "#eff7fb"
+                                        font.family: "IBM Plex Sans"
+                                        font.pixelSize: 11
+                                        font.bold: true
+                                    }
+
+                                    Item {
+                                        id: progressSlider
+                                        Layout.fillWidth: true
+                                        implicitHeight: 20
+                                        enabled: root.seekControlEnabled
+                                        property bool pressed: progressSeekArea.pressed
+                                        readonly property real visualPosition: root.seekControlEnabled && player.duration > 0
+                                            ? Math.max(0, Math.min(1, root.pendingSeekPosition / player.duration))
+                                            : 0
 
                                         Rectangle {
-                                            width: volumeSlider.visualPosition * parent.width
-                                            height: parent.height
-                                            radius: parent.radius
-                                            color: "#ff4e45"
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            height: 6
+                                            radius: 3
+                                            color: "#274356"
+
+                                            Rectangle {
+                                                width: progressSlider.visualPosition * parent.width
+                                                height: parent.height
+                                                radius: parent.radius
+                                                color: "#5cb9ea"
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            x: progressSlider.visualPosition * (progressSlider.width - width)
+                                            y: progressSlider.height / 2 - height / 2
+                                            width: 14
+                                            height: 14
+                                            radius: 7
+                                            color: progressSlider.pressed ? "#ffffff" : "#d9f3ff"
+                                            border.color: "#5cb9ea"
+                                        }
+
+                                        MouseArea {
+                                            id: progressSeekArea
+                                            anchors.fill: parent
+                                            enabled: progressSlider.enabled
+                                            hoverEnabled: true
+                                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                                            function updateSeek(mouseX) {
+                                                if (!enabled || player.duration <= 0) {
+                                                    return
+                                                }
+
+                                                const ratio = Math.max(0, Math.min(1, mouseX / width))
+                                                root.pendingSeekPosition = ratio * player.duration
+                                            }
+
+                                            onPressed: {
+                                                updateSeek(mouse.x)
+                                                root.revealOverlay()
+                                            }
+                                            onPositionChanged: if (pressed) updateSeek(mouse.x)
+                                            onReleased: {
+                                                if (progressSlider.enabled) {
+                                                    player.position = root.pendingSeekPosition
+                                                    root.revealOverlay()
+                                                }
+                                            }
                                         }
                                     }
 
-                                    handle: Rectangle {
-                                        x: volumeSlider.leftPadding + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
-                                        y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                                        width: 14
-                                        height: 14
-                                        radius: 7
-                                        color: volumeSlider.pressed ? "#ffffff" : "#ffe6e4"
-                                        border.color: "#ff4e45"
+                                    Rectangle {
+                                        visible: progressSlider.pressed
+                                        radius: 10
+                                        color: "#102838"
+                                        border.color: "#5cb9ea"
+                                        implicitWidth: seekPreviewLabel.implicitWidth + 14
+                                        implicitHeight: seekPreviewLabel.implicitHeight + 8
+
+                                        Label {
+                                            id: seekPreviewLabel
+                                            anchors.centerIn: parent
+                                            text: root.formatPlaybackTime(root.pendingSeekPosition)
+                                            color: "#eff7fb"
+                                            font.family: "IBM Plex Sans"
+                                            font.pixelSize: 11
+                                            font.bold: true
+                                        }
+                                    }
+
+                                    Label {
+                                        text: root.formatPlaybackTime(player.duration)
+                                        color: "#b8c9d6"
+                                        font.family: "IBM Plex Sans"
+                                        font.pixelSize: 11
+                                        font.bold: true
                                     }
                                 }
 
-                                Label {
-                                    text: root.volumePercent + "%"
-                                    color: "#eff7fb"
-                                    font.family: "IBM Plex Sans"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
 
-                                IconButton {
-                                    iconKind: "volume-up"
-                                    toolTipText: "Volume up (Page Up key)"
-                                    enabled: root.volumeControlEnabled
-                                    onClicked: root.adjustVolume(0.05)
-                                }
+                                    IconButton {
+                                        visible: root.dvrControlMode
+                                        compact: true
+                                        iconKind: "previous"
+                                        toolTipText: "Previous episode in this series"
+                                        enabled: root.recordingNavigation.previousId !== ""
+                                        onClicked: root.playAdjacentRecording(-1)
+                                    }
 
-                                IconButton {
-                                    iconKind: root.fullscreenMode ? "fullscreen-exit" : "fullscreen"
-                                    toolTipText: root.fullscreenMode ? "Return to windowed mode (F or Esc)" : "Enter fullscreen (F)"
-                                    onClicked: root.toggleFullscreenRequested()
+                                    IconButton {
+                                        visible: root.dvrControlMode
+                                        compact: true
+                                        iconKind: player.playbackState === MediaPlayer.PlayingState ? "pause" : "play"
+                                        toolTipText: player.playbackState === MediaPlayer.PlayingState ? "Pause" : "Play"
+                                        enabled: root.activeRecordingId !== "" || player.playbackState !== MediaPlayer.StoppedState
+                                        onClicked: root.togglePlayPause()
+                                    }
+
+                                    IconButton {
+                                        visible: root.dvrControlMode
+                                        compact: true
+                                        iconKind: "stop"
+                                        toolTipText: "Stop playback"
+                                        enabled: root.playbackMode === "recorded" || root.playbackUrl !== ""
+                                        onClicked: root.stopDvrPlayback()
+                                    }
+
+                                    IconButton {
+                                        visible: root.dvrControlMode
+                                        compact: true
+                                        iconKind: "restart"
+                                        toolTipText: "Restart from the beginning"
+                                        enabled: root.activeRecordingId !== ""
+                                        onClicked: root.restartPlayback()
+                                    }
+
+                                    IconButton {
+                                        visible: root.dvrControlMode
+                                        compact: true
+                                        iconKind: "next"
+                                        toolTipText: "Next episode in this series"
+                                        enabled: root.recordingNavigation.nextId !== ""
+                                        onClicked: root.playAdjacentRecording(1)
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                        visible: root.dvrControlMode
+                                    }
+
+                                    IconButton {
+                                        compact: true
+                                        iconKind: "volume-down"
+                                        toolTipText: "Volume down (Down key)"
+                                        enabled: root.volumeControlEnabled
+                                        onClicked: root.adjustVolume(-0.05)
+                                    }
+
+                                    Item {
+                                        id: volumeSlider
+                                        Layout.fillWidth: !root.dvrControlMode
+                                        Layout.preferredWidth: root.dvrControlMode ? 140 : -1
+                                        implicitHeight: 20
+                                        enabled: root.volumeControlEnabled
+                                        property bool pressed: volumeSeekArea.pressed
+                                        readonly property real visualPosition: root.volumeLevel
+
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            height: 6
+                                            radius: 3
+                                            color: "#274356"
+
+                                            Rectangle {
+                                                width: volumeSlider.visualPosition * parent.width
+                                                height: parent.height
+                                                radius: parent.radius
+                                                color: "#ff4e45"
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            x: volumeSlider.visualPosition * (volumeSlider.width - width)
+                                            y: volumeSlider.height / 2 - height / 2
+                                            width: 14
+                                            height: 14
+                                            radius: 7
+                                            color: volumeSlider.pressed ? "#ffffff" : "#ffe6e4"
+                                            border.color: "#ff4e45"
+                                        }
+
+                                        MouseArea {
+                                            id: volumeSeekArea
+                                            anchors.fill: parent
+                                            enabled: volumeSlider.enabled
+                                            hoverEnabled: true
+                                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                                            function updateVolume(mouseX) {
+                                                if (!enabled) {
+                                                    return
+                                                }
+
+                                                root.volumeLevel = Math.max(0, Math.min(1, mouseX / width))
+                                            }
+
+                                            onPressed: {
+                                                updateVolume(mouse.x)
+                                                root.revealOverlay()
+                                            }
+                                            onPositionChanged: if (pressed) updateVolume(mouse.x)
+                                        }
+                                    }
+
+                                    Label {
+                                        text: root.volumePercent + "%"
+                                        color: "#eff7fb"
+                                        font.family: "IBM Plex Sans"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                    }
+
+                                    IconButton {
+                                        compact: true
+                                        iconKind: "volume-up"
+                                        toolTipText: "Volume up (Up key)"
+                                        enabled: root.volumeControlEnabled
+                                        onClicked: root.adjustVolume(0.05)
+                                    }
+
+                                    IconButton {
+                                        compact: true
+                                        iconKind: root.fullscreenMode ? "fullscreen-exit" : "fullscreen"
+                                        toolTipText: root.fullscreenMode ? "Return to windowed mode (F or Esc)" : "Enter fullscreen (F)"
+                                        onClicked: root.toggleFullscreenRequested()
+                                    }
                                 }
                             }
                         }
 
                         Rectangle {
+                            id: overlayMessageCard
                             anchors.left: parent.left
                             anchors.bottom: parent.bottom
                             anchors.margins: 24
@@ -528,6 +849,7 @@ Pane {
                         }
 
                         Rectangle {
+                            id: overlayHintCard
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.margins: 24
@@ -536,11 +858,12 @@ Pane {
                             radius: 16
                             color: "#8c09141d"
                             border.color: "#324f63"
+                            visible: !root.dvrControlMode
 
                             Label {
                                 id: overlayHint
                                 anchors.centerIn: parent
-                                text: "Up/Down change EPG row  PgUp/PgDown volume  Left/Right switch channels  F toggle fullscreen  Esc exit"
+                                text: "Up/Down volume  Left/Right switch channels  F toggle fullscreen  Esc exit"
                                 color: "#d7e5ef"
                                 font.family: "IBM Plex Sans"
                                 font.pixelSize: 13

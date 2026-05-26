@@ -43,6 +43,41 @@ ApplicationWindow {
         livePlaybackStage.adjustVolume(delta)
     }
 
+    function toggleDvrPlayback() {
+        if (dvrWorkspaceLoader.item && dvrWorkspaceLoader.item.togglePlayPause) {
+            bumpOverlay()
+            dvrWorkspaceLoader.item.togglePlayPause()
+        }
+    }
+
+    function seekDvrPlayback(deltaMilliseconds) {
+        if (dvrWorkspaceLoader.item && dvrWorkspaceLoader.item.seekPlayback) {
+            bumpOverlay()
+            dvrWorkspaceLoader.item.seekPlayback(deltaMilliseconds)
+        }
+    }
+
+    function stopDvrPlayback() {
+        if (dvrWorkspaceLoader.item && dvrWorkspaceLoader.item.stopPlayback) {
+            bumpOverlay()
+            dvrWorkspaceLoader.item.stopPlayback()
+        }
+    }
+
+    function restartDvrPlayback() {
+        if (dvrWorkspaceLoader.item && dvrWorkspaceLoader.item.restartPlayback) {
+            bumpOverlay()
+            dvrWorkspaceLoader.item.restartPlayback()
+        }
+    }
+
+    function playAdjacentDvrEpisode(direction) {
+        if (dvrWorkspaceLoader.item && dvrWorkspaceLoader.item.playAdjacentEpisode) {
+            bumpOverlay()
+            dvrWorkspaceLoader.item.playAdjacentEpisode(direction)
+        }
+    }
+
     minimumWidth: 1180
     minimumHeight: 720
     width: Math.min(Math.max(1440, Math.round(Screen.width * 0.88)), Math.max(960, Screen.width - 80))
@@ -75,6 +110,10 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
+            if (window.dvrWorkspaceActive) {
+                window.adjustActivePlaybackVolume(0.05)
+                return
+            }
             appController.playAdjacentChannel(-1)
         }
     }
@@ -84,6 +123,10 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
+            if (window.dvrWorkspaceActive) {
+                window.adjustActivePlaybackVolume(-0.05)
+                return
+            }
             appController.playAdjacentChannel(1)
         }
     }
@@ -110,6 +153,10 @@ ApplicationWindow {
         sequence: "Right"
         context: Qt.ApplicationShortcut
         onActivated: {
+            if (window.dvrWorkspaceActive) {
+                window.seekDvrPlayback(10000)
+                return
+            }
             window.bumpOverlay()
             appController.playAdjacentChannel(1)
         }
@@ -119,9 +166,69 @@ ApplicationWindow {
         sequence: "Left"
         context: Qt.ApplicationShortcut
         onActivated: {
+            if (window.dvrWorkspaceActive) {
+                window.seekDvrPlayback(-10000)
+                return
+            }
             window.bumpOverlay()
             appController.playAdjacentChannel(-1)
         }
+    }
+
+    Shortcut {
+        sequence: "Space"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.toggleDvrPlayback()
+    }
+
+    Shortcut {
+        sequence: "K"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.toggleDvrPlayback()
+    }
+
+    Shortcut {
+        sequence: "J"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.seekDvrPlayback(-10000)
+    }
+
+    Shortcut {
+        sequence: "L"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.seekDvrPlayback(10000)
+    }
+
+    Shortcut {
+        sequence: "Home"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.restartDvrPlayback()
+    }
+
+    Shortcut {
+        sequence: "S"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.stopDvrPlayback()
+    }
+
+    Shortcut {
+        sequence: "["
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.playAdjacentDvrEpisode(-1)
+    }
+
+    Shortcut {
+        sequence: "]"
+        context: Qt.ApplicationShortcut
+        enabled: window.dvrWorkspaceActive
+        onActivated: window.playAdjacentDvrEpisode(1)
     }
 
     Rectangle {
@@ -317,13 +424,20 @@ ApplicationWindow {
                     warningText: appController.stageWarning
                     failureText: appController.stageFailure
                     playbackUrl: appController.playbackUrl
+                    playbackMode: appController.playbackMode
                     embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                    dvrControlsAllowed: false
                     diagnosticsSummary: appController.diagnosticsSummary
                     diagnosticsRows: appController.diagnosticsRows
+                    currentRecordingId: appController.currentRecordingId
+                    selectedRecordingId: appController.selectedRecordingId
+                    recordingGroups: appController.dvrRecordingGroups
                     retryEnabled: appController.shellPhase === "playback_failed"
                     onExitFullscreenRequested: window.exitFullscreen()
                     onToggleFullscreenRequested: window.toggleFullscreen()
                     onRetryRequested: appController.retryPlayback()
+                    onStopPlaybackRequested: appController.stopPlayback()
+                    onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                 }
 
                 Item {
@@ -408,6 +522,26 @@ ApplicationWindow {
                 playbackStage.adjustVolume(delta)
             }
 
+            function togglePlayPause() {
+                playbackStage.togglePlayPause()
+            }
+
+            function seekPlayback(deltaMilliseconds) {
+                playbackStage.seekBy(deltaMilliseconds)
+            }
+
+            function stopPlayback() {
+                playbackStage.stopDvrPlayback()
+            }
+
+            function restartPlayback() {
+                playbackStage.restartPlayback()
+            }
+
+            function playAdjacentEpisode(direction) {
+                playbackStage.playAdjacentRecording(direction)
+            }
+
             PlaybackStage {
                 id: playbackStage
                 anchors.fill: parent
@@ -420,13 +554,20 @@ ApplicationWindow {
                 warningText: appController.stageWarning
                 failureText: appController.stageFailure
                 playbackUrl: appController.playbackUrl
+                playbackMode: appController.playbackMode
                 embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                dvrControlsAllowed: true
                 diagnosticsSummary: appController.diagnosticsSummary
                 diagnosticsRows: appController.diagnosticsRows
+                currentRecordingId: appController.currentRecordingId
+                selectedRecordingId: appController.selectedRecordingId
+                recordingGroups: appController.dvrRecordingGroups
                 retryEnabled: appController.shellPhase === "playback_failed"
                 onExitFullscreenRequested: window.exitFullscreen()
                 onToggleFullscreenRequested: window.toggleFullscreen()
                 onRetryRequested: appController.retryPlayback()
+                onStopPlaybackRequested: appController.stopPlayback()
+                onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
             }
         }
     }
@@ -437,6 +578,26 @@ ApplicationWindow {
         Item {
             function adjustVolume(delta) {
                 playbackStage.adjustVolume(delta)
+            }
+
+            function togglePlayPause() {
+                playbackStage.togglePlayPause()
+            }
+
+            function seekPlayback(deltaMilliseconds) {
+                playbackStage.seekBy(deltaMilliseconds)
+            }
+
+            function stopPlayback() {
+                playbackStage.stopDvrPlayback()
+            }
+
+            function restartPlayback() {
+                playbackStage.restartPlayback()
+            }
+
+            function playAdjacentEpisode(direction) {
+                playbackStage.playAdjacentRecording(direction)
             }
 
             RowLayout {
@@ -458,14 +619,16 @@ ApplicationWindow {
                     onRuleEditorRequested: function(recordingId) { appController.openRuleEditorFromRecording(recordingId) }
                 }
 
-                ColumnLayout {
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 12
 
                     DvrStatusBanner {
+                        id: dvrWideStatusBanner
                         visible: appController.dvrBannerVisible
-                        Layout.fillWidth: true
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
                         severity: appController.dvrBannerSeverity
                         titleText: appController.dvrBannerTitle
                         messageText: appController.dvrBannerMessage
@@ -474,8 +637,12 @@ ApplicationWindow {
 
                     PlaybackStage {
                         id: playbackStage
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        anchors.top: dvrWideStatusBanner.visible ? dvrWideStatusBanner.bottom : parent.top
+                        anchors.topMargin: dvrWideStatusBanner.visible ? 12 : 0
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: dvrWideDetailsPanel.top
+                        anchors.bottomMargin: 12
                         immersiveMode: false
                         fullscreenMode: window.fullscreenMode
                         overlayPulse: window.overlayPulse
@@ -485,18 +652,28 @@ ApplicationWindow {
                         warningText: appController.stageWarning
                         failureText: appController.stageFailure
                         playbackUrl: appController.playbackUrl
+                        playbackMode: appController.playbackMode
                         embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                        dvrControlsAllowed: true
                         diagnosticsSummary: appController.diagnosticsSummary
                         diagnosticsRows: appController.diagnosticsRows
+                        currentRecordingId: appController.currentRecordingId
+                        selectedRecordingId: appController.selectedRecordingId
+                        recordingGroups: appController.dvrRecordingGroups
                         retryEnabled: appController.shellPhase === "playback_failed"
                         onExitFullscreenRequested: window.exitFullscreen()
                         onToggleFullscreenRequested: window.toggleFullscreen()
                         onRetryRequested: appController.retryPlayback()
+                        onStopPlaybackRequested: appController.stopPlayback()
+                        onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                     }
 
                     DvrDetailsPanel {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 250
+                        id: dvrWideDetailsPanel
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 250
                         recording: appController.selectedRecordingDetails
                         playbackMode: appController.playbackMode
                         currentRecordingId: appController.currentRecordingId
@@ -527,6 +704,26 @@ ApplicationWindow {
         Item {
             function adjustVolume(delta) {
                 playbackStage.adjustVolume(delta)
+            }
+
+            function togglePlayPause() {
+                playbackStage.togglePlayPause()
+            }
+
+            function seekPlayback(deltaMilliseconds) {
+                playbackStage.seekBy(deltaMilliseconds)
+            }
+
+            function stopPlayback() {
+                playbackStage.stopDvrPlayback()
+            }
+
+            function restartPlayback() {
+                playbackStage.restartPlayback()
+            }
+
+            function playAdjacentEpisode(direction) {
+                playbackStage.playAdjacentRecording(direction)
             }
 
             ColumnLayout {
@@ -570,13 +767,20 @@ ApplicationWindow {
                     warningText: appController.stageWarning
                     failureText: appController.stageFailure
                     playbackUrl: appController.playbackUrl
+                    playbackMode: appController.playbackMode
                     embeddedPlaybackEnabled: appController.embeddedPlaybackEnabled
+                    dvrControlsAllowed: true
                     diagnosticsSummary: appController.diagnosticsSummary
                     diagnosticsRows: appController.diagnosticsRows
+                    currentRecordingId: appController.currentRecordingId
+                    selectedRecordingId: appController.selectedRecordingId
+                    recordingGroups: appController.dvrRecordingGroups
                     retryEnabled: appController.shellPhase === "playback_failed"
                     onExitFullscreenRequested: window.exitFullscreen()
                     onToggleFullscreenRequested: window.toggleFullscreen()
                     onRetryRequested: appController.retryPlayback()
+                    onStopPlaybackRequested: appController.stopPlayback()
+                    onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                 }
 
                 DvrDetailsPanel {

@@ -7,9 +7,10 @@ ToolButton {
     required property string iconKind
     property string toolTipText: ""
     property color iconColor: enabled ? "#eff7fb" : "#627786"
+    property bool compact: false
 
-    implicitWidth: 42
-    implicitHeight: 42
+    implicitWidth: compact ? 36 : 42
+    implicitHeight: compact ? 36 : 42
     padding: 0
     hoverEnabled: true
 
@@ -18,7 +19,7 @@ ToolButton {
     ToolTip.delay: 250
 
     background: Rectangle {
-        radius: 14
+        radius: control.compact ? 12 : 14
         color: !control.enabled ? "#10202d" : (control.down ? "#1a4258" : (control.hovered ? "#173247" : "#112838"))
         border.color: !control.enabled ? "#274053" : (control.down ? "#7fd4ff" : "#2d5a74")
     }
@@ -27,8 +28,8 @@ ToolButton {
         Canvas {
             id: iconCanvas
             anchors.centerIn: parent
-            width: 20
-            height: 20
+            width: control.compact ? 16 : 20
+            height: control.compact ? 16 : 20
 
             onPaint: {
                 const ctx = getContext("2d")
@@ -75,21 +76,6 @@ ToolButton {
                     ctx.lineTo(5.2, 13.2)
                     ctx.stroke()
                     break
-                case "guide":
-                    ctx.beginPath()
-                    ctx.roundRect(3, 4, 14, 12.5, 2.5)
-                    ctx.stroke()
-                    ctx.beginPath()
-                    ctx.moveTo(3, 7.5)
-                    ctx.lineTo(17, 7.5)
-                    ctx.moveTo(7.6, 4)
-                    ctx.lineTo(7.6, 16.5)
-                    ctx.moveTo(12.4, 7.5)
-                    ctx.lineTo(12.4, 16.5)
-                    ctx.moveTo(7.6, 12)
-                    ctx.lineTo(17, 12)
-                    ctx.stroke()
-                    break
                 case "volume-down":
                     drawSpeaker()
                     ctx.beginPath()
@@ -126,6 +112,60 @@ ToolButton {
                     ctx.moveTo(13.8, 4.9)
                     ctx.lineTo(16.8, 5.1)
                     ctx.lineTo(15.5, 7.8)
+                    ctx.closePath()
+                    ctx.fill()
+                    break
+                case "play":
+                    ctx.beginPath()
+                    ctx.moveTo(6.5, 4.8)
+                    ctx.lineTo(15.8, 10)
+                    ctx.lineTo(6.5, 15.2)
+                    ctx.closePath()
+                    ctx.fill()
+                    break
+                case "pause":
+                    ctx.fillRect(6, 4.8, 3.1, 10.4)
+                    ctx.fillRect(10.9, 4.8, 3.1, 10.4)
+                    break
+                case "stop":
+                    ctx.fillRect(5.2, 5.2, 9.6, 9.6)
+                    break
+                case "restart":
+                    ctx.beginPath()
+                    ctx.arc(10, 10, 5.8, Math.PI * 0.3, Math.PI * 1.95, true)
+                    ctx.stroke()
+                    ctx.beginPath()
+                    ctx.moveTo(4.8, 6.8)
+                    ctx.lineTo(4.2, 3.9)
+                    ctx.lineTo(7.1, 4.6)
+                    ctx.closePath()
+                    ctx.fill()
+                    break
+                case "previous":
+                    ctx.beginPath()
+                    ctx.moveTo(15.5, 4.8)
+                    ctx.lineTo(8.8, 10)
+                    ctx.lineTo(15.5, 15.2)
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.beginPath()
+                    ctx.moveTo(9.5, 4.8)
+                    ctx.lineTo(2.8, 10)
+                    ctx.lineTo(9.5, 15.2)
+                    ctx.closePath()
+                    ctx.fill()
+                    break
+                case "next":
+                    ctx.beginPath()
+                    ctx.moveTo(4.5, 4.8)
+                    ctx.lineTo(11.2, 10)
+                    ctx.lineTo(4.5, 15.2)
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.beginPath()
+                    ctx.moveTo(10.5, 4.8)
+                    ctx.lineTo(17.2, 10)
+                    ctx.lineTo(10.5, 15.2)
                     ctx.closePath()
                     ctx.fill()
                     break

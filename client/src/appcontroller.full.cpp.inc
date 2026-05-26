@@ -359,11 +359,17 @@ void AppController::setWorkspaceMode(const QString &mode)
         return;
     }
 
+    const auto previousMode = m_workspaceMode;
+
     m_workspaceMode = normalized;
     emit workspaceModeChanged();
 
     if (m_workspaceMode == QStringLiteral("dvr")) {
         refreshDvrWorkspace();
+    }
+
+    if (previousMode != m_workspaceMode && m_playbackMode != QStringLiteral("idle")) {
+        stopPlayback();
     }
 }
 
