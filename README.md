@@ -35,7 +35,7 @@ Choose the package format that best matches your system:
 
 Current package artifacts are generated under `dist/`:
 
-- `dist/hdhomerun-linux-player_0.2.0_amd64.deb`
+- `dist/hdhomerun-linux-player_0.2.1_amd64.deb`
 - `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
 - `dist/HDHomeRunLinuxPlayer-x86_64.flatpak`
 
@@ -51,7 +51,7 @@ chmod +x dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 ### Debian package
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.2.0_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.2.1_amd64.deb
 hdhomerun-linux-player
 ```
 

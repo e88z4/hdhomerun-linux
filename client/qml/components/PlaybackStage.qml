@@ -8,6 +8,7 @@ Pane {
 
     required property bool immersiveMode
     required property bool fullscreenMode
+    required property bool stageActive
     required property int overlayPulse
     required property string shellPhase
     required property string currentChannelRef
@@ -202,7 +203,7 @@ Pane {
     }
 
     function syncPlayback() {
-        if (!embeddedPlaybackEnabled || playbackUrl === "" || shellPhase === "playback_failed" || shellPhase === "device_selection") {
+        if (!stageActive || !embeddedPlaybackEnabled || playbackUrl === "" || shellPhase === "playback_failed" || shellPhase === "device_selection") {
             player.stop()
             return
         }
@@ -228,6 +229,7 @@ Pane {
         surfaceErrorText = ""
         syncPlayback()
     }
+    onStageActiveChanged: syncPlayback()
     onEmbeddedPlaybackEnabledChanged: syncPlayback()
     onImmersiveModeChanged: if (surfaceOverlayEnabled) revealOverlay()
     onOverlayPulseChanged: if (surfaceOverlayEnabled) revealOverlay()
@@ -423,7 +425,7 @@ Pane {
 
                     MediaPlayer {
                         id: player
-                        source: root.embeddedPlaybackEnabled && root.playbackUrl !== "" ? root.playbackUrl : ""
+                        source: root.stageActive && root.embeddedPlaybackEnabled && root.playbackUrl !== "" ? root.playbackUrl : ""
                         audioOutput: audioOutput
                         videoOutput: videoOutput
                         onErrorOccurred: function(error, errorString) {

@@ -409,6 +409,7 @@ ApplicationWindow {
                     anchors.bottomMargin: window.fullscreenMode ? 0 : 14
                     immersiveMode: window.fullscreenMode
                     fullscreenMode: window.fullscreenMode
+                    stageActive: !window.dvrWorkspaceActive
                     overlayPulse: window.overlayPulse
                     shellPhase: appController.shellPhase
                     currentChannelRef: appController.currentChannelRef
@@ -541,6 +542,7 @@ ApplicationWindow {
                 anchors.fill: parent
                 immersiveMode: true
                 fullscreenMode: window.fullscreenMode
+                stageActive: window.dvrWorkspaceActive
                 overlayPulse: window.overlayPulse
                 shellPhase: appController.shellPhase
                 currentChannelRef: appController.currentChannelRef
@@ -641,6 +643,7 @@ ApplicationWindow {
                         anchors.bottomMargin: 12
                         immersiveMode: false
                         fullscreenMode: window.fullscreenMode
+                        stageActive: window.dvrWorkspaceActive
                         overlayPulse: window.overlayPulse
                         shellPhase: appController.shellPhase
                         currentChannelRef: appController.currentChannelRef
@@ -758,6 +761,7 @@ ApplicationWindow {
                     Layout.preferredHeight: 320
                     immersiveMode: false
                     fullscreenMode: window.fullscreenMode
+                    stageActive: window.dvrWorkspaceActive
                     overlayPulse: window.overlayPulse
                     shellPhase: appController.shellPhase
                     currentChannelRef: appController.currentChannelRef

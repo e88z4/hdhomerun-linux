@@ -4,7 +4,7 @@ set -eu
 ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 DEV_BUILD_DIR="${HDHR_DEV_BUILD_DIR:-$ROOT_DIR/build/client}"
 DEBIAN_VERIFY_DIR="$ROOT_DIR/dist/debian-verify"
-PACKAGE_VERSION="${HDHR_PACKAGE_VERSION:-0.2.0}"
+PACKAGE_VERSION="${HDHR_PACKAGE_VERSION:-0.2.1}"
 
 cmake -S "$ROOT_DIR/client" -B "$DEV_BUILD_DIR" -G Ninja
 cmake --build "$DEV_BUILD_DIR"
