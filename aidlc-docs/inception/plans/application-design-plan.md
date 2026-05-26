@@ -1,87 +1,92 @@
-# Application Design Plan
+# DVR Application Design Plan
 
 ## Execution Checklist
-- [x] Review requirements, stories, and execution plan together
-- [x] Confirm component boundaries for backend, client, playback, and state persistence
-- [x] Confirm service orchestration and startup model
-- [x] Confirm local API style and communication pattern
-- [x] Generate components.md
-- [x] Generate component-methods.md
-- [x] Generate services.md
-- [x] Generate component-dependency.md
-- [x] Generate application-design.md
+- [x] Review approved DVR requirements and user stories
+- [x] Review existing Linux player components and services
+- [x] Collect answers for DVR application-design questions in this document
+- [x] Resolve any ambiguity in the answers
+- [x] Generate components.md updates for DVR-specific components
+- [x] Generate component-methods.md updates for DVR-specific interfaces
+- [x] Generate services.md updates for DVR-specific services and orchestration
+- [x] Generate component-dependency.md updates for DVR communication patterns
+- [x] Generate application-design.md summary updates for the DVR increment
 - [x] Validate design completeness and consistency
 
-## Mandatory Artifacts
-- [x] components.md with component definitions and responsibilities
-- [x] component-methods.md with high-level method signatures
-- [x] services.md with orchestration and service interactions
-- [x] component-dependency.md with dependency relationships and communication patterns
-- [x] application-design.md consolidating the full design
+## Design Focus
+- Introduce DVR-specific backend services without breaking the current Live TV architecture.
+- Define how recorded library, rule management, DVR readiness, and Live TV stop control fit into the existing client and backend boundaries.
+- Keep the backend as the sole owner of DVR API integration.
 
-## Current Design Direction
-- A standalone local backend service is bundled with the desktop app.
-- A Qt/QML desktop client provides the user-facing Linux experience.
-- Playback is persistent and embedded in the app rather than delegated to an external window.
-- `libhdhomerun` anchors device discovery and tuner control.
-- Packaging must support AppImage, Flatpak, and Debian.
+## Selected Design Decisions
+- DVR tab structure: split layout with recordings on one side and details or actions on the other.
+- Rule editor placement: hybrid approach with contextual entry and fuller dedicated editing when needed.
+- Storage-source presentation: merged default view plus optional source-level filtering or diagnostics.
+- Backend API shape: hybrid approach with a clear DVR endpoint group plus selective reuse of existing playback and guide boundaries.
+- Live TV stop control placement: playback overlay or primary player controls.
 
 ## Clarifying Questions
 
 ## Question 1
-What local API style should the Qt/QML client use to communicate with the backend service in v1?
+How should the DVR tab be structured at a high level?
 
-A) HTTP/JSON over loopback only
+A) Library-first layout with recordings as the default primary view
 
-B) Unix domain socket with a structured RPC or message protocol
+B) Dashboard layout with readiness, upcoming state, rules, and recordings visible together
 
-C) Hybrid: HTTP/JSON for control plus event streaming for status updates
+C) Split layout with recordings on one side and details or actions on the other
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: A
+[Answer]: C
 
 ## Question 2
-How should the bundled backend service be started in v1?
+Where should recording-rule creation and editing live in the UX?
 
-A) Desktop app starts and supervises it automatically
+A) Dedicated rule editor view inside the DVR tab
 
-B) System service or user service managed outside the app
+B) Contextual drawer or modal opened from recordings, guide, or episode actions
 
-C) Support both, but desktop app auto-start is the primary path
+C) Hybrid approach with quick actions in context and a fuller dedicated editor when needed
 
 X) Other (please describe after [Answer]: tag below)
 
 [Answer]: C
 
 ## Question 3
-Where should remembered state such as last device and last channel live in v1?
+How should storage sources be presented to the user?
 
-A) Backend-owned local state only
+A) Mostly merged into one DVR view, with source details shown only when useful
 
-B) Client-owned local state only
+B) Explicit source selector as a primary control
 
-C) Backend owns canonical state, client may cache UI preferences
+C) Merged default view plus optional source-level filtering or diagnostics
 
 X) Other (please describe after [Answer]: tag below)
 
 [Answer]: C
 
 ## Question 4
-How much tuner and signal detail should the v1 design assume in the main client surface?
+How should the backend expose DVR APIs to the client?
 
-A) Compact summary in the main player view
+A) Separate DVR endpoint group with recordings, rules, readiness, and status endpoints
 
-B) Dedicated diagnostics panel or drawer in addition to summary indicators
+B) Extend existing guide and playback endpoints heavily rather than adding a clear DVR surface
 
-C) Diagnostics-first view with lots of device detail visible by default
+C) Hybrid approach with a clear DVR group plus selective reuse of existing playback or guide endpoints
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: B
+[Answer]: C
 
-## Security and Design Constraints
-- Local service exposure should remain limited to the local machine.
-- API inputs must be designed with explicit validation boundaries.
-- Logging should be structured and avoid sensitive data.
-- Design should leave space for layered defenses rather than a single control point.
+## Question 5
+Where should the explicit Live TV stop control live in the interface?
+
+A) In the playback overlay or primary player controls
+
+B) In a header or tab-level action area
+
+C) In both a visible playback control and a secondary menu path
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: A

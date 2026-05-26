@@ -1,94 +1,133 @@
-# Story Generation Plan
+# DVR Story Generation Plan
 
 ## Execution Checklist
-- [x] Validate that the selected story approach matches the approved requirements
-- [x] Confirm target personas and user roles
-- [x] Confirm the story breakdown approach
-- [x] Confirm key UX expectations that affect acceptance criteria
-- [x] Generate personas.md with user archetypes and characteristics
-- [x] Generate stories.md with stories following INVEST criteria
-- [x] Include acceptance criteria for every story
-- [x] Map personas to the stories they use
-- [x] Review for ambiguity and completeness
+- [x] Review approved DVR requirements and existing Linux player context
+- [x] Confirm that User Stories add value for this feature increment
+- [x] Collect answers for story-structure and persona questions in this document
+- [x] Resolve any ambiguity in the answers
+- [x] Choose the final story breakdown approach
+- [x] Generate personas.md with DVR-relevant user archetypes
+- [x] Generate stories.md with INVEST-compliant user stories
+- [x] Map personas to stories and include acceptance criteria for each story
+- [x] Review generated artifacts for completeness and clarity
 
-## Recommended Story Approach
+## Planned Method
+- Convert the approved DVR requirements into user-centered stories that cover recordings, rule management, DVR readiness, and Live TV stop behavior.
+- Keep stories implementation-oriented enough to support later unit decomposition, but user-centered enough to preserve product clarity.
+- Preserve the existing Live TV product context so DVR stories describe extension of the current application rather than a separate replacement product.
 
-### Primary Recommendation
-- **Approach**: Epic-based user journey hybrid
-- **Reasoning**: The product has a clear core journey from app launch to live playback, but it also has distinct functional areas such as discovery, device selection, playback, and packaging-sensitive operational expectations.
+## Selected Plan Decisions
+- Persona strategy: reuse the existing player personas and add one DVR-focused power-user persona.
+- Story breakdown approach: hybrid journey plus feature approach.
+- Acceptance-criteria detail: comprehensive, including error states, DVR readiness, and Live TV stop behavior.
+- Story size: medium-sized stories that still map cleanly to incremental delivery slices.
+- Live TV stop placement: separate Live TV control story in the same feature increment.
+- First-story-set emphasis: library and playback first, while still keeping rule creation in the first meaningful increment.
 
-### Alternative Approaches Considered
-- **User Journey-Based**: Strong for UX flow, but weaker at separating the backend-service and client responsibilities.
-- **Feature-Based**: Strong for engineering separation, but weaker at preserving the launch-to-watch experience.
-- **Persona-Based**: Useful, but there are likely only a small number of meaningful personas in v1.
-- **Domain-Based**: Less valuable this early because the product is primarily workflow-driven.
+## Story Breakdown Options
 
-## Planned Artifacts
-- **personas.md**: user archetypes, goals, frustrations, and contexts
-- **stories.md**: epics, user stories, and acceptance criteria
+### Option A: User Journey-Based
+- Organize stories by end-to-end user flows such as setting up a rule, browsing recordings, or stopping Live TV.
+- Best for validating UX continuity.
+- Risk: related technical capabilities may be spread across multiple stories.
 
-## Context for Story Creation
-- Product is a native Linux desktop app.
-- Architecture is a bundled two-part design: standalone local backend service plus Qt/QML desktop client.
-- Playback is persistent in-app live TV playback using mpv or libmpv.
-- Discovery and tuner integration center on libhdhomerun.
-- v1 includes device discovery, channel list, live playback, and tuner status or signal info.
-- v1 excludes recording.
+### Option B: Feature-Based
+- Organize stories around capabilities such as DVR readiness, recording rules, recorded library, recorded playback, and Live TV session control.
+- Best for clean implementation grouping.
+- Risk: full user journeys may be less obvious.
+
+### Option C: Hybrid Journey + Feature
+- Use major epics aligned to product capabilities, with stories inside each epic following specific user journeys.
+- Best balance for this project.
+- Risk: slightly more planning overhead.
+
+### Option D: Persona-Based
+- Group stories around user types such as casual viewer and power DVR user.
+- Best if persona differences dominate the design.
+- Risk: shared technical workflows may be duplicated.
 
 ## Clarifying Questions
 
 ## Question 1
-How should the app behave when it starts and a single HDHomeRun device is available?
+Which persona strategy should guide the DVR stories?
 
-A) Auto-select the device and go straight to the channel list
+A) Reuse the existing player personas and add only DVR-specific details where needed
 
-B) Show the discovered device first and require explicit selection
+B) Reuse the existing personas and add one new DVR-focused power-user persona
 
-C) Restore the last used device if known, otherwise ask
+C) Create a fresh set of DVR-specific personas separate from the Live TV set
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: B
+
+## Question 2
+Which story breakdown approach do you want for the DVR feature?
+
+A) User journey-based
+
+B) Feature-based
+
+C) Hybrid journey plus feature approach
+
+D) Persona-based
 
 X) Other (please describe after [Answer]: tag below)
 
 [Answer]: C
 
-## Question 2
-What should be the default behavior after the user chooses a channel from the list?
-
-A) Start playback immediately
-
-B) Show a details panel first, then require a play action
-
-C) Remember the user's last behavior and follow it
-
-X) Other (please describe after [Answer]: tag below)
-
-[Answer]: A
-
 ## Question 3
-When playback fails because no tuner is available or the stream cannot start, what should v1 emphasize?
+How detailed should acceptance criteria be in the user stories?
 
-A) Clear inline error with quick retry options
+A) Keep them concise and user-visible only
 
-B) Technical diagnostics and raw device details first
+B) Include user-visible behavior plus important backend contract expectations
 
-C) Simple generic failure message only
+C) Be comprehensive, including error states, DVR-readiness states, and resource-release behavior
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: A
+[Answer]: C
 
 ## Question 4
-Should v1 remember the last watched channel and reopen it on next launch?
+How small should the stories be?
 
-A) Yes
+A) Broad stories per major DVR capability
 
-B) No
+B) Medium-sized stories that still map cleanly to incremental delivery slices
 
-C) Ask me on first launch
+C) Smaller implementation-ready stories with tighter scope boundaries
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: B
+
+## Question 5
+How should the new Live TV stop-streaming feature be represented in the stories?
+
+A) As part of the DVR stories because it was added during the DVR feature request
+
+B) As a separate Live TV control story in the same feature increment
+
+C) As a lower-priority supporting story after core DVR stories
+
+X) Other (please describe after [Answer]: tag below)
+
+[Answer]: B
+
+## Question 6
+Which user experience emphasis matters more for the first story set?
+
+A) Fast and clear recorded-library browsing and playback
+
+B) Powerful rule management and scheduling control
+
+C) A balanced first set that treats library and rule workflows as equally important
 
 X) Other (please describe after [Answer]: tag below)
 
 [Answer]: A
 
 ## Approval Prompt
-- After the questions are answered, this plan will be used to generate `aidlc-docs/inception/user-stories/personas.md` and `aidlc-docs/inception/user-stories/stories.md`.
-- Approval of this plan will be requested before generation.
+- After approval, this plan will be used to generate `aidlc-docs/inception/user-stories/personas.md` and `aidlc-docs/inception/user-stories/stories.md`.
+- Approval of this plan is required before generation.

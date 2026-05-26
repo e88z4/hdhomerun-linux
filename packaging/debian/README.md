@@ -5,7 +5,7 @@ Use the Debian package when you want the app installed through the normal Debian
 ## Install
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.2.0_amd64.deb
 ```
 
 ## Run

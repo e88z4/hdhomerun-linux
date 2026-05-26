@@ -28,7 +28,7 @@ Best on Debian and Debian-derived distributions.
 Use:
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.2.0_amd64.deb
 hdhomerun-linux-player
 ```
 
@@ -39,7 +39,7 @@ Best when you prefer sandboxed desktop applications.
 Use:
 
 ```sh
-flatpak install ./dist/HDHomeRunLinuxPlayer.flatpak
+flatpak install ./dist/HDHomeRunLinuxPlayer-x86_64.flatpak
 flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 ```
 
@@ -47,9 +47,9 @@ flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 
 The generated package artifacts are:
 
-- `dist/hdhomerun-linux-player_0.1.0_<arch>.deb`
-- `dist/HDHomeRunLinuxPlayer-<appimage-arch>.AppImage`
-- `dist/HDHomeRunLinuxPlayer-<flatpak-arch>.flatpak`
+- `dist/hdhomerun-linux-player_0.2.0_amd64.deb`
+- `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+- `dist/HDHomeRunLinuxPlayer-x86_64.flatpak`
 
 ## Build Commands
 
@@ -66,8 +66,6 @@ This command:
 - rebuilds the release client and backend
 - rebuilds Debian, AppImage, and Flatpak artifacts
 - verifies packaged startup for Debian, AppImage, and Flatpak
-
-The repository also includes a GitHub Actions release workflow at `.github/workflows/release.yml`. Pushing a tag such as `v0.1.0` after updating the source version triggers the same distribution build for both `amd64` and `arm64`, uploads the architecture-specific `dist/` artifacts, and publishes a GitHub release.
 
 Lower-level packaging commands:
 

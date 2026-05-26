@@ -7,21 +7,22 @@ It ships as a Qt/QML desktop client with a bundled local backend. The backend di
 ## What You Get
 
 - live TV playback for playable HDHomeRun channels
+- DVR workspace for browsing recordings, upcoming items, and HDHomeRun DVR rule actions
+- in-window recorded playback for DVR recordings
 - automatic device discovery on the local network
-- a permanent full EPG grid docked below playback for quick switching
-- SiliconDust guide-backed current-show titles, channel logos, and program artwork in the guide
-- compact tuner diagnostics embedded into the playback stage instead of a dedicated side drawer
-- playback-time idle inhibition so the screensaver and monitor sleep do not interrupt viewing
+- bottom scrollable channel strip for quick switching
+- optional XMLTV-backed current-show titles in the channel strip
+- tuner diagnostics in a side drawer
 - fullscreen playback mode for a larger viewing surface
-- keyboard shortcuts for fullscreen, channel surfing, and volume control
-- YouTube-style overlay playback controls with a slider-based volume UI in both windowed and fullscreen modes
+- keyboard shortcuts for fullscreen, channel surfing, volume control, and DVR playback actions
+- overlay playback controls for both live TV and DVR playback in windowed and fullscreen modes
 - packaged distribution for Debian, AppImage, and Flatpak
 
 ## Current Scope
 
 - Linux desktop only
-- live playback only
-- no recording support
+- live playback and HDHomeRun DVR playback
+- DVR management is focused on playback, delete, and rule actions exposed by the bundled backend
 - DRM or otherwise restricted channels are shown but are not playable
 
 ## Package Options
@@ -34,12 +35,9 @@ Choose the package format that best matches your system:
 
 Current package artifacts are generated under `dist/`:
 
-- `dist/hdhomerun-linux-player_0.1.0_<arch>.deb`
-- `dist/HDHomeRunLinuxPlayer-<appimage-arch>.AppImage`
-- `dist/HDHomeRunLinuxPlayer-<flatpak-arch>.flatpak`
-
-GitHub releases can be published from tags that match the app version in source, using the workflow at `.github/workflows/release.yml`.
-That workflow now builds both `amd64` and `arm64` artifacts, including Raspberry Pi 3-class `arm64` targets and newer.
+- `dist/hdhomerun-linux-player_0.2.0_amd64.deb`
+- `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+- `dist/HDHomeRunLinuxPlayer-x86_64.flatpak`
 
 ## Quick Start
 
@@ -50,16 +48,12 @@ chmod +x dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 ./dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 ```
 
-On arm64 systems such as Raspberry Pi OS 64-bit, use the matching `HDHomeRunLinuxPlayer-aarch64.AppImage` release asset.
-
 ### Debian package
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.1.0_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.2.0_amd64.deb
 hdhomerun-linux-player
 ```
-
-On arm64 systems, install the matching `hdhomerun-linux-player_0.1.0_arm64.deb` release asset.
 
 ### Flatpak
 
@@ -67,8 +61,6 @@ On arm64 systems, install the matching `hdhomerun-linux-player_0.1.0_arm64.deb` 
 flatpak install ./dist/HDHomeRunLinuxPlayer-x86_64.flatpak
 flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 ```
-
-On arm64 systems, use the matching `HDHomeRunLinuxPlayer-aarch64.flatpak` release asset.
 
 ## First Launch
 
@@ -79,17 +71,20 @@ On first launch the app should:
 - ask you to select a device if more than one tuner is available or no previous device is remembered
 - load the channel lineup for the selected device
 - start playback in the center stage when you choose a playable channel
+- allow switching between Live TV and DVR workspace modes when DVR data is available
 
 ## Keyboard Shortcuts
 
 - `F`: toggle fullscreen mode
 - `Esc`: exit fullscreen mode
-- `Up`: previous guide row / previous playable channel
-- `Down`: next guide row / next playable channel
-- `Right`: next playable channel
-- `Left`: previous playable channel
-- `Page Up`: volume up
-- `Page Down`: volume down
+- `Up`: volume up
+- `Down`: volume down
+- `Right`: next playable channel in Live TV, seek forward in DVR
+- `Left`: previous playable channel in Live TV, seek backward in DVR
+- `Space` or `K`: play or pause DVR playback
+- `S`: stop DVR playback
+- `Home`: restart DVR playback from the beginning
+- `[` / `]`: previous or next DVR episode within the current series
 
 ## Requirements
 
@@ -116,12 +111,7 @@ No external `mpv` install is required for the packaged application.
 
 - confirm the host has working multimedia support for Qt Multimedia and FFmpeg-backed playback
 - try another known-good channel to rule out a lineup or signal issue
-- inspect the inline diagnostics block beside the playback status pill for tuner lock and signal details
-
-### Guide data is missing in the packaged app
-
-- make sure an older backend is not already running on `127.0.0.1:38080`
-- if needed, stop the stale process and relaunch the packaged app so it starts the bundled backend that includes guide support
+- open the diagnostics drawer and inspect tuner lock and signal details
 
 ## Advanced Runtime Overrides
 
@@ -130,8 +120,7 @@ These are mainly for troubleshooting and development:
 - `HDHR_BACKEND_URL`: point the client at a manually managed backend URL instead of the default loopback address
 - `HDHR_BACKEND_CMD`: override the backend executable path used by client auto-start
 - `HDHR_BACKEND_BIND`: override the backend bind address when launching the backend manually
-
-Current-program titles are resolved automatically from SiliconDust guide data using the `DeviceAuth` value exposed by discovered HDHomeRun tuners.
+- `HDHR_XMLTV_SOURCE`: optional XMLTV file path or HTTP(S) URL used to enrich the channel strip with current-show titles
 
 ## Project Docs
 

@@ -10,6 +10,7 @@ Pane {
     required property bool fullscreenMode
     required property int overlayPulse
     required property string shellPhase
+    required property string currentChannelRef
     required property string currentTitle
     required property string currentSubtitle
     required property string warningText
@@ -28,6 +29,7 @@ Pane {
     signal toggleFullscreenRequested()
     signal retryRequested()
     signal stopPlaybackRequested()
+    signal playChannelRequested(string channelRef)
     signal playRecordingRequested(string recordingId)
 
     property string surfaceErrorText: ""
@@ -38,7 +40,8 @@ Pane {
     readonly property int volumePercent: Math.round(volumeLevel * 100)
     readonly property bool volumeControlEnabled: embeddedPlaybackEnabled
     readonly property bool dvrControlMode: dvrControlsAllowed && (playbackMode === "recorded" || selectedRecordingId !== "" || currentRecordingId !== "")
-    readonly property bool surfaceOverlayEnabled: immersiveMode || dvrControlMode
+    readonly property bool liveControlMode: !dvrControlsAllowed && (playbackMode === "live" || currentChannelRef !== "")
+    readonly property bool surfaceOverlayEnabled: immersiveMode || dvrControlMode || liveControlMode
     readonly property string activeRecordingId: currentRecordingId !== "" ? currentRecordingId : selectedRecordingId
     readonly property var recordingNavigation: findRecordingNavigation(activeRecordingId)
     readonly property bool seekControlEnabled: dvrControlMode && player.seekable && player.duration > 0
@@ -154,6 +157,35 @@ Pane {
         revealOverlay()
     }
 
+    function toggleLivePlayback() {
+        if (!liveControlMode) {
+            return
+        }
+
+        if (player.playbackState === MediaPlayer.PlayingState) {
+            player.pause()
+            return
+        }
+
+        if (player.playbackState === MediaPlayer.PausedState) {
+            player.play()
+            return
+        }
+
+        if (currentChannelRef !== "") {
+            playChannelRequested(currentChannelRef)
+        }
+    }
+
+    function stopLivePlayback() {
+        if (!liveControlMode) {
+            return
+        }
+
+        stopPlaybackRequested()
+        revealOverlay()
+    }
+
     function revealOverlay() {
         controlOverlayVisible = true
         immersiveOverlayVisible = immersiveMode
@@ -201,6 +233,7 @@ Pane {
     onOverlayPulseChanged: if (surfaceOverlayEnabled) revealOverlay()
     onCurrentTitleChanged: if (surfaceOverlayEnabled) revealOverlay()
     onCurrentSubtitleChanged: if (surfaceOverlayEnabled) revealOverlay()
+    onCurrentChannelRefChanged: if (surfaceOverlayEnabled) revealOverlay()
     onWarningTextChanged: if (surfaceOverlayEnabled) revealOverlay()
     onFailureTextChanged: if (surfaceOverlayEnabled) revealOverlay()
     onVolumeLevelChanged: if (surfaceOverlayEnabled) revealOverlay()
@@ -416,9 +449,15 @@ Pane {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: overlayControlsBar.visible ? overlayControlsBar.top : parent.bottom
-                        acceptedButtons: Qt.NoButton
+                        acceptedButtons: root.liveControlMode ? Qt.LeftButton : Qt.NoButton
                         hoverEnabled: true
                         enabled: true
+                        onClicked: {
+                            root.revealOverlay()
+                            if (root.liveControlMode) {
+                                root.toggleLivePlayback()
+                            }
+                        }
                         onPositionChanged: root.revealOverlay()
                         onEntered: root.revealOverlay()
                     }
@@ -734,6 +773,29 @@ Pane {
                                     }
 
                                     IconButton {
+                                        visible: root.liveControlMode
+                                        compact: true
+                                        iconKind: player.playbackState === MediaPlayer.PlayingState ? "pause" : "play"
+                                        toolTipText: player.playbackState === MediaPlayer.PlayingState ? "Pause live TV" : "Play current live channel"
+                                        enabled: root.currentChannelRef !== "" || player.playbackState !== MediaPlayer.StoppedState
+                                        onClicked: root.toggleLivePlayback()
+                                    }
+
+                                    IconButton {
+                                        visible: root.liveControlMode
+                                        compact: true
+                                        iconKind: "stop"
+                                        toolTipText: "Stop live playback"
+                                        enabled: root.playbackMode === "live" || root.playbackUrl !== ""
+                                        onClicked: root.stopLivePlayback()
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                        visible: root.liveControlMode
+                                    }
+
+                                    IconButton {
                                         compact: true
                                         iconKind: "volume-down"
                                         toolTipText: "Volume down (Down key)"
@@ -743,8 +805,8 @@ Pane {
 
                                     Item {
                                         id: volumeSlider
-                                        Layout.fillWidth: !root.dvrControlMode
-                                        Layout.preferredWidth: root.dvrControlMode ? 140 : -1
+                                        Layout.fillWidth: !(root.dvrControlMode || root.liveControlMode)
+                                        Layout.preferredWidth: (root.dvrControlMode || root.liveControlMode) ? 140 : -1
                                         implicitHeight: 20
                                         enabled: root.volumeControlEnabled
                                         property bool pressed: volumeSeekArea.pressed
@@ -858,7 +920,7 @@ Pane {
                             radius: 16
                             color: "#8c09141d"
                             border.color: "#324f63"
-                            visible: !root.dvrControlMode
+                            visible: false
 
                             Label {
                                 id: overlayHint

@@ -1047,3 +1047,1132 @@
   - the packaged client now makes the stale-backend failure mode explicit instead of silently degrading guide behavior
   - live playback can keep the display awake without requiring the user to change desktop power settings outside the app
   - live verification confirmed that the new guide window route returns schedule entries and current-program markers for the real tuner
+
+## 2026-05-24T17:29:44Z
+- **Stage**: DVR Feature Workspace Detection and Session Continuity
+- **User Input**: "using AI-DLC, I would like to setup a new feature for hdhomerun. The HDHomerun setup a DVR. Let's make an interview with me what exact functionality of DVR that I am looking for. Get yourself understanding how the DVR API works. Then prompt me with 'ask_user'"
+- **AI Response**: "Resumed the existing AI-DLC project context, loaded prior reverse-engineering and requirements artifacts, and reviewed the SiliconDust DVR-facing APIs before starting fresh requirements clarification for a DVR feature increment."
+- **Context**:
+  - Existing AI-DLC project remains active in `CONSTRUCTION - Build and Test - Unit 5`.
+  - Existing player requirements explicitly defer recording and DVR support, so DVR work requires a new feature-level requirements pass.
+  - DVR-related APIs found in the workspace include `https://api.hdhomerun.com/api/recording_rules`, `https://api.hdhomerun.com/api/episodes`, `https://api.hdhomerun.com/api/upcoming_recordings`, local storage-engine `discover.json`, local `StorageURL` recording listings, and `recording_events.post?sync` for rule-sync notifications.
+
+## 2026-05-24T17:29:44Z
+- **Stage**: DVR Feature Requirements Analysis Preparation
+- **AI Response**: "Prepared a dedicated requirements interview file for the DVR feature so answers stay separate from the previously approved live-TV-only requirements."
+- **Artifacts Planned**:
+  - `aidlc-docs/inception/requirements/dvr-feature-requirement-verification-questions.md`
+- **Context**: Ready to collect user answers through the AI-DLC question workflow.
+
+## 2026-05-24T17:33:13Z
+- **Stage**: DVR Feature Requirements Clarification
+- **User Input**: "how does the DVR functionality works in HDHomerun flex device?"
+- **AI Response**: "Prepared a focused explanation describing the HDHomeRun DVR model as a coordination between tuner hardware, SiliconDust guide and recording-rule APIs, and one or more local storage engines that expose recording and live-buffer endpoints."
+- **Context**:
+  - The HDHomeRun Flex hardware is the tuner source, not the complete DVR by itself.
+  - Recording rules and upcoming schedules are guide-service driven through `DeviceAuth`-authorized APIs.
+  - Actual recording storage, live buffering, playback listing, and delete operations are handled by local storage-engine endpoints such as `discover.json`, `recorded_files.json`, `auto/v<channel>`, and per-recording `CmdURL` actions.
+
+## 2026-05-24T17:33:13Z
+- **Stage**: DVR Feature Requirements Clarification
+- **User Input**: "where is the scheduling being stored?"
+- **AI Response**: "Prepared a clarification that separates authoritative recording-rule persistence from local upcoming-task computation and local recording storage."
+- **Context**:
+  - The workspace documentation shows recording rules being created, listed, changed, and deleted through `https://api.hdhomerun.com/api/recording_rules` using `DeviceAuth`.
+  - Local storage engines are explicitly notified via `recording_events.post?sync` after rule changes, which indicates they recompute local upcoming tasks rather than acting as the source of truth for rule definitions.
+  - Recorded media files and storage capacity remain local to the storage engine.
+
+## 2026-05-24T17:36:03Z
+- **Stage**: DVR Feature Requirements Clarification
+- **User Input**: "give me the detail architecture, draw mermaid diagram and the detail process. If the schedule is on the vendor side, how does the recording being started?"
+- **AI Response**: "Prepared a detailed architecture explanation that distinguishes documented API behavior from the inferred runtime orchestration between vendor-side rule persistence and local record-engine execution."
+- **Context**:
+  - The documentation explicitly shows rule management and upcoming-recording inspection on the SiliconDust API side.
+  - The documentation explicitly shows local storage-engine sync, recorded-file listing, live buffering, and delete operations on the local-network side.
+  - The exact vendor-internal scheduler implementation is not documented in the workspace, so the recording-start path must be explained as a high-confidence inference from the available APIs.
+
+## 2026-05-24T17:44:05Z
+- **Stage**: DVR Feature Requirements Analysis Continuation
+- **User Input**: "let's do the end to end AI DLC process. Let's implement the DVR"
+- **AI Response**: "Accepted the request as a full new-feature AI-DLC increment for DVR support and prepared to continue at the requirements-analysis gate before design and implementation."
+- **Context**:
+  - Existing player scope must be extended from live-TV-only to include DVR requirements.
+  - The next required AI-DLC step is to complete and approve the DVR requirements interview before workflow planning, design, and code generation.
+
+## 2026-05-24T17:44:05Z
+- **Stage**: DVR Feature Requirements Analysis Input
+- **User Input**: "let's do the record library first. Both series and one-time rules are required. Recorded playback and deletion are in scope. The backend should own all DVR API integration. StorageURL shoud prioritize local storage, then non local storage as the next priority."
+- **AI Response**: "Captured the directly provided answers into the DVR requirements questionnaire and prepared to request only the remaining unanswered requirement items."
+- **Context**:
+  - Question 2 mapped to recorded-library-first.
+  - Question 4 mapped to both series and one-time recording rules.
+  - Question 7 mapped to list, playback, and delete support.
+  - Question 8 recorded a custom local-storage-priority rule.
+  - Question 10 mapped to backend-owned DVR API integration.
+
+## 2026-05-24T17:44:05Z
+- **Stage**: DVR Feature Requirements Analysis Input
+- **User Input**: "1. I want to be able to set recording rule within the application and playback capability. 3. We should make a new tab (LiveTV tab and DVR tab) which user can toggle. 5. I want the most flexible rule. 6. We should use the scheduling guide color coding that the show is going to be recorded or has been recorded. 9. Elaborate more on question 9  11. I am able to setup recording rule and playback the recorded show. 12. Elaborate on question 12   13. Elaborate more on this question"
+- **AI Response**: "Captured the newly supplied answers into the DVR requirements questionnaire where possible and prepared targeted explanations for the remaining environment and extension-policy questions."
+- **Context**:
+  - Question 1 recorded a combined rule-creation and recorded-playback objective.
+  - Question 3 mapped to a dedicated DVR area, consistent with a separate DVR tab.
+  - Question 5 mapped to full rule-option flexibility.
+  - Question 6 recorded a custom requirement for guide-style scheduled and recorded state coloring.
+  - Question 11 recorded success as rule creation plus recorded-show playback.
+  - Questions 9, 12, and 13 remain open pending clarification.
+
+## 2026-05-24T17:44:05Z
+- **Stage**: DVR Feature Requirements Analysis Input
+- **User Input**: "9. B  12. A 13. B"
+- **AI Response**: "Completed the DVR requirements interview, preserving DVR-readiness detection as an explicit feature need while keeping the security baseline enabled and property-based testing partially enabled."
+- **Context**:
+  - Question 9 selected environment-detection and missing-prerequisite visibility.
+  - Question 12 kept security rules enforced as blocking constraints.
+  - Question 13 kept property-based testing partially enabled for pure functions and serialization.
+
+## 2026-05-24T17:44:05Z
+- **Stage**: DVR Feature Requirements Review
+- **User Input**: "add more functionality to stop streaming the LiveTv as extra additional feature. I approved the DVR design"
+- **AI Response**: "Treated the response as an approval with a requested requirements change, then updated the DVR requirements to include explicit Live TV stop-streaming control before re-requesting approval."
+- **Context**:
+  - The new requirement adds explicit stop control for active Live TV sessions.
+  - The approval gate must be re-confirmed after this requirements update.
+
+## 2026-05-24T18:05:28Z
+- **Stage**: DVR Feature Requirements Review Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the updated DVR requirements and prepared to proceed to the User Stories stage."
+- **Context**:
+  - Approved artifact: `aidlc-docs/inception/requirements/dvr-feature-requirements.md`
+  - Next stage: User Stories
+
+## 2026-05-24T18:05:28Z
+- **Stage**: DVR Feature User Stories Assessment
+- **AI Response**: "Assessed the DVR feature as requiring User Stories because it is a new user-facing workflow set that spans multiple UI surfaces, backend capabilities, personas, and acceptance scenarios."
+- **Context**:
+  - Direct user-facing functionality is being added.
+  - The work affects multiple user journeys including recording setup, DVR readiness, recorded playback, deletion, and Live TV stop behavior.
+  - User stories are expected to improve clarity, acceptance testing, and implementation sequencing.
+
+## 2026-05-24T18:13:22Z
+- **Stage**: DVR Feature User Stories Plan Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR user-stories plan and proceeded to generate personas and user stories."
+- **Context**:
+  - Approved plan: `aidlc-docs/inception/plans/story-generation-plan.md`
+
+## 2026-05-24T18:13:22Z
+- **Stage**: DVR Feature User Stories Generation
+- **AI Response**: "Extended the existing personas and stories artifacts with DVR-specific personas, DVR epics, and a separate Live TV stop-control story."
+- **Artifacts Generated**:
+  - `aidlc-docs/inception/user-stories/personas.md`
+  - `aidlc-docs/inception/user-stories/stories.md`
+- **Context**:
+  - Added a DVR-focused power-user persona.
+  - Added DVR readiness, DVR tab navigation, recorded library, recorded playback, recorded deletion, recording-rule management, scheduling-state awareness, and Live TV stop-control stories.
+
+## 2026-05-24T18:14:38Z
+- **Stage**: DVR Feature User Stories Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR user stories and proceeded to workflow planning for the feature increment."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/inception/user-stories/personas.md` and `aidlc-docs/inception/user-stories/stories.md`
+
+## 2026-05-24T18:14:38Z
+- **Stage**: DVR Feature Workflow Planning
+- **AI Response**: "Created a DVR execution plan that recommends additional Application Design and Units Generation before construction-stage design and implementation."
+- **Artifacts Generated**:
+  - `aidlc-docs/inception/plans/execution-plan.md`
+- **Context**:
+  - Workflow Planning recommends executing Application Design, Units Generation, Functional Design, NFR Requirements, NFR Design, Infrastructure Design, Code Generation, and Build and Test for the DVR increment.
+
+## 2026-05-24T18:14:38Z
+- **Stage**: DVR Feature Workflow Planning Approval Prompt
+- **AI Response**: "Prepared to request user approval of the DVR execution sequence before moving into Application Design."
+- **Context**:
+  - Execution plan artifact: `aidlc-docs/inception/plans/execution-plan.md`
+  - Approval is required before proceeding to the next inception stage.
+
+## 2026-05-24T18:17:05Z
+- **Stage**: DVR Feature Workflow Planning Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR execution plan and proceeded to Application Design."
+- **Context**:
+  - Approved artifact: `aidlc-docs/inception/plans/execution-plan.md`
+  - Next stage: Application Design
+
+## 2026-05-24T18:17:05Z
+- **Stage**: DVR Feature Application Design Planning Input
+- **User Input**: "1c 2c 3c 4c 5a"
+- **AI Response**: "Recorded the application-design answers and selected a split DVR layout, hybrid rule-editor pattern, merged storage presentation with optional filtering, a clear DVR API group, and overlay-based Live TV stop control."
+- **Context**:
+  - No remaining ambiguity was detected in the design-planning answers.
+
+## 2026-05-24T18:17:05Z
+- **Stage**: DVR Feature Application Design Plan Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the DVR application-design plan before generating the design artifacts."
+- **Context**:
+  - Plan artifact: `aidlc-docs/inception/plans/application-design-plan.md`
+  - Approval is required before generating design artifacts.
+
+## 2026-05-24T18:32:22Z
+- **Stage**: DVR Feature Application Design Plan Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR application-design plan and proceeded to generate the design artifacts."
+- **Context**:
+  - Approved artifact: `aidlc-docs/inception/plans/application-design-plan.md`
+  - Next action: generate application-design artifacts for the DVR increment.
+
+## 2026-05-24T18:32:22Z
+- **Stage**: DVR Feature Application Design
+- **AI Response**: "Generated DVR-specific application-design updates covering components, component methods, services, dependencies, security implications, and orchestration."
+- **Artifacts Generated**:
+  - `aidlc-docs/inception/application-design/components.md`
+  - `aidlc-docs/inception/application-design/component-methods.md`
+  - `aidlc-docs/inception/application-design/services.md`
+  - `aidlc-docs/inception/application-design/component-dependency.md`
+  - `aidlc-docs/inception/application-design/application-design.md`
+- **Context**:
+  - Design reflects the approved split DVR workspace, hybrid rule editor, local-first storage ordering, backend-owned DVR integration, and explicit Live TV stop control.
+
+## 2026-05-24T18:32:22Z
+- **Stage**: DVR Feature Application Design Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the completed DVR application-design artifacts before proceeding to Units Generation."
+- **Context**:
+  - Application-design artifacts are ready for review.
+  - Approval is required before moving to the next inception stage.
+
+## 2026-05-24T18:35:09Z
+- **Stage**: DVR Feature Application Design Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR application-design artifacts and proceeded to Units Generation planning."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/inception/application-design/components.md`, `aidlc-docs/inception/application-design/component-methods.md`, `aidlc-docs/inception/application-design/services.md`, `aidlc-docs/inception/application-design/component-dependency.md`, and `aidlc-docs/inception/application-design/application-design.md`
+  - Next stage: Units Generation
+
+## 2026-05-24T18:35:09Z
+- **Stage**: DVR Feature Units Generation Planning
+- **AI Response**: "Created a DVR-specific brownfield unit-of-work planning document with decomposition questions covering grouping, dependencies, ownership, business boundaries, Live TV stop placement, and unit granularity."
+- **Artifacts Generated**:
+  - `aidlc-docs/inception/plans/unit-of-work-plan.md`
+- **Context**:
+  - Planning is tailored to the approved DVR design and the existing hdhomerun-linux project structure.
+
+## 2026-05-24T18:35:09Z
+- **Stage**: DVR Feature Units Generation Planning Input Prompt
+- **AI Response**: "Prepared to request answers for the DVR unit-of-work planning questions before decomposition generation."
+- **Context**:
+  - Plan artifact: `aidlc-docs/inception/plans/unit-of-work-plan.md`
+  - User answers are required before unit generation can proceed.
+
+## 2026-05-24T18:37:20Z
+- **Stage**: DVR Feature Units Generation Planning Input
+- **User Input**: "pick the best recommendation for me and approve it"
+- **AI Response**: "Applied the recommended unit-of-work choices, treating the response as authorization to use the default DVR decomposition and proceed with unit generation."
+- **Context**:
+  - Selected answers: 1A, 2B, 3C, 4A, 5A, 6B
+
+## 2026-05-24T18:37:20Z
+- **Stage**: DVR Feature Units Generation
+- **AI Response**: "Generated DVR-specific unit-of-work, dependency, and story-mapping updates for Units 6 through 9."
+- **Artifacts Generated**:
+  - `aidlc-docs/inception/application-design/unit-of-work.md`
+  - `aidlc-docs/inception/application-design/unit-of-work-dependency.md`
+  - `aidlc-docs/inception/application-design/unit-of-work-story-map.md`
+- **Context**:
+  - Decomposition follows a backend-first, hybrid-sequenced DVR increment with recorded playback and Live TV stop grouped at the playback boundary.
+
+## 2026-05-24T18:37:20Z
+- **Stage**: DVR Feature Units Generation Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the completed DVR unit-generation artifacts before moving into the construction phase."
+- **Context**:
+  - Units 6 through 9 are ready for review.
+  - Approval is required before proceeding to construction.
+
+## 2026-05-24T18:39:30Z
+- **Stage**: DVR Feature Units Generation Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the DVR unit-generation artifacts and proceeded to construction for Unit 6 functional design."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/inception/plans/unit-of-work-plan.md`, `aidlc-docs/inception/application-design/unit-of-work.md`, `aidlc-docs/inception/application-design/unit-of-work-dependency.md`, and `aidlc-docs/inception/application-design/unit-of-work-story-map.md`
+  - Next stage: Functional Design for Unit 6 DVR Domain Foundation
+
+## 2026-05-24T18:39:30Z
+- **Stage**: DVR Feature Unit 6 Functional Design Planning
+- **AI Response**: "Created the Unit 6 functional-design planning document for DVR readiness, rule lifecycle, and schedule projection."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-functional-design-plan.md`
+- **Context**:
+  - Planning focuses on readiness modeling, rule confirmation behavior, schedule projection, option validation, and stale-airing handling.
+
+## 2026-05-24T18:39:30Z
+- **Stage**: DVR Feature Unit 6 Functional Design Planning Input
+- **User Input**: "pick the best option for me"
+- **AI Response**: "Applied the recommended functional-design choices for Unit 6 and treated the response as authorization to proceed with the backend DVR domain design."
+- **Context**:
+  - Selected answers: 1B, 2B, 3C, 4A, 5A
+
+## 2026-05-24T18:39:30Z
+- **Stage**: DVR Feature Unit 6 Functional Design
+- **AI Response**: "Generated business logic, business rules, and domain entity artifacts for DVR readiness, rule lifecycle, and schedule projection."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/business-logic-model.md`
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/business-rules.md`
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/domain-entities.md`
+- **Context**:
+  - Functional design establishes explicit readiness conditions, confirmed rule writes, hybrid schedule projection, fail-fast option validation, and non-guessing stale-airing handling.
+
+## 2026-05-24T18:39:30Z
+- **Stage**: DVR Feature Unit 6 Functional Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 6 functional-design artifacts before moving to the next construction stage."
+- **Context**:
+  - Functional design artifacts are ready for review in `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/`.
+
+## 2026-05-24T18:42:05Z
+- **Stage**: DVR Feature Unit 6 Functional Design Approval
+- **User Input**: "approve and continue"
+- **AI Response**: "Accepted the Unit 6 functional-design artifacts and proceeded to NFR Requirements."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/business-logic-model.md`, `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/business-rules.md`, and `aidlc-docs/construction/unit-6-dvr-domain-foundation/functional-design/domain-entities.md`
+  - Next stage: NFR Requirements for Unit 6 DVR Domain Foundation
+
+## 2026-05-24T18:42:05Z
+- **Stage**: DVR Feature Unit 6 NFR Requirements Planning
+- **AI Response**: "Created the Unit 6 NFR requirements planning document for DVR readiness, rule lifecycle, and schedule projection quality attributes."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-nfr-requirements-plan.md`
+- **Context**:
+  - Planning focuses on performance targets, safe retry behavior, sensitive metadata handling, testing depth, and stack consistency.
+
+## 2026-05-24T18:42:05Z
+- **Stage**: DVR Feature Unit 6 NFR Requirements Planning Input
+- **User Input**: "pick the recommendation that you select"
+- **AI Response**: "Applied the recommended NFR choices for Unit 6 and treated the response as authorization to proceed with the NFR assessment."
+- **Context**:
+  - Selected answers: 1B, 2B, 3A, 4B, 5A
+
+## 2026-05-24T18:42:05Z
+- **Stage**: DVR Feature Unit 6 NFR Requirements
+- **AI Response**: "Generated NFR requirements and tech-stack decisions for the Unit 6 DVR domain foundation."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-requirements/nfr-requirements.md`
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-requirements/tech-stack-decisions.md`
+- **Context**:
+  - NFRs emphasize sub-second normal-path reads, safe read-only retries, strict handling of sensitive upstream material, and targeted property-based testing.
+
+## 2026-05-24T18:42:05Z
+- **Stage**: DVR Feature Unit 6 NFR Requirements Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 6 NFR requirements before moving to the next construction stage."
+- **Context**:
+  - NFR artifacts are ready for review in `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-requirements/`.
+
+## 2026-05-24T18:45:32Z
+- **Stage**: DVR Feature Unit 6 NFR Requirements Approval
+- **User Input**: "approve and proceed to the next phase"
+- **AI Response**: "Accepted the Unit 6 NFR requirements and proceeded to NFR Design."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-requirements/nfr-requirements.md` and `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-requirements/tech-stack-decisions.md`
+  - Next stage: NFR Design for Unit 6 DVR Domain Foundation
+
+## 2026-05-24T18:45:32Z
+- **Stage**: DVR Feature Unit 6 NFR Design Planning
+- **AI Response**: "Created the Unit 6 NFR design planning document for DVR resilience, performance, security, and logical-component patterns."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-nfr-design-plan.md`
+- **Context**:
+  - Planning focuses on degraded-read behavior, short-lived freshness patterns, validation boundaries for vendor-derived data, and internal logical separation.
+
+## 2026-05-24T18:45:32Z
+- **Stage**: DVR Feature Unit 6 NFR Design Planning Input
+- **User Input**: "pick the best option as you recommended"
+- **AI Response**: "Applied the recommended NFR design choices for Unit 6 and treated the response as authorization to proceed with the NFR design."
+- **Context**:
+  - Selected answers: 1A, 2B, 3A, 4A
+
+## 2026-05-24T18:45:32Z
+- **Stage**: DVR Feature Unit 6 NFR Design
+- **AI Response**: "Generated NFR design patterns and logical components for the Unit 6 DVR domain foundation."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-design/nfr-design-patterns.md`
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-design/logical-components.md`
+- **Context**:
+  - NFR design uses degraded-state read handling, a short-lived freshness window for safe reads, adapter-boundary validation, and separated logical domain responsibilities.
+
+## 2026-05-24T18:45:32Z
+- **Stage**: DVR Feature Unit 6 NFR Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 6 NFR design before moving to the next construction stage."
+- **Context**:
+  - NFR design artifacts are ready for review in `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-design/`.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 NFR Design Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the Unit 6 NFR design artifacts. Infrastructure Design was skipped because Unit 6 introduces no new deployment topology or infrastructure resources, and work proceeded directly to Code Generation planning."
+- **Context**:
+  - Approved artifacts: `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-design/nfr-design-patterns.md` and `aidlc-docs/construction/unit-6-dvr-domain-foundation/nfr-design/logical-components.md`
+  - Infrastructure Design skip rationale: local backend-only unit with no new infrastructure concerns.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Planning
+- **AI Response**: "Created the detailed code generation plan for the Unit 6 DVR domain foundation."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-code-generation-plan.md`
+- **Context**:
+  - Planning targets a new DVR backend module, shared model additions, AppState wiring, DVR routes, targeted tests, and code summary documentation.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Plan Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the Unit 6 code generation plan before modifying application code."
+- **Context**:
+  - Plan artifact: `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-code-generation-plan.md`
+  - Approval is required before code generation begins.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Plan Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the Unit 6 code generation plan and proceeded to modify the backend implementation."
+- **Context**:
+  - Approved artifact: `aidlc-docs/construction/plans/unit-6-dvr-domain-foundation-code-generation-plan.md`
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation
+- **AI Response**: "Implemented the Unit 6 DVR backend domain module, models, route handlers, AppState wiring, and supporting tests."
+- **Artifacts Generated**:
+  - `backend/src/dvr.rs`
+  - `aidlc-docs/construction/unit-6-dvr-domain-foundation/code/summary.md`
+- **Context**:
+  - Modified files include `backend/src/device/mod.rs`, `backend/src/app.rs`, `backend/src/models.rs`, `backend/src/http/routes.rs`, `backend/src/http/types.rs`, and `backend/src/lib.rs`.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Validation
+- **AI Response**: "Ran `cargo test` in `backend/` and all backend unit, contract, and property tests passed after updating the DVR changes and affected fixtures."
+- **Context**:
+  - Validation included the new DVR unit tests and the existing backend contract suite.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the generated Unit 6 backend code before moving to the next unit or Build and Test."
+- **Context**:
+  - Application code is ready for review in `backend/`.
+  - Documentation summary is ready in `aidlc-docs/construction/unit-6-dvr-domain-foundation/code/summary.md`.
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 6 Code Generation Approval
+- **User Input**: "approve"
+- **AI Response**: "Accepted the generated Unit 6 backend code and proceeded to Unit 7 functional design."
+- **Context**:
+  - Approved application code: `backend/`
+  - Approved documentation: `aidlc-docs/construction/unit-6-dvr-domain-foundation/code/summary.md`
+
+## 2026-05-24T18:49:36Z
+- **Stage**: DVR Feature Unit 7 Functional Design Planning
+- **AI Response**: "Created the Unit 7 functional-design planning document for recorded library resolution, recorded playback, deletion safety, and explicit Live TV stop behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-7-dvr-library-playback-maintenance-functional-design-plan.md`
+- **Context**:
+  - Planning focuses on duplicate resolution, playback-session reuse, deletion validation, live-stop semantics, and missing-recording handling.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Functional Design Answers
+- **User Input**: "1b 2a 3a 4a 5a"
+- **AI Response**: "Mapped the shorthand answers to the Unit 7 design decisions and used them to finalize the functional design."
+- **Context**:
+  - Q1 duplicate handling: merge duplicates and retain source metadata
+  - Q2 playback interaction: reuse the shared playback session controller with recorded-playback mode
+  - Q3 deletion safety: require strict backend validation of delete targets
+  - Q4 live stop behavior: release playback resources promptly and preserve remembered context
+  - Q5 missing recording behavior: return structured missing-recording result and require refresh
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Functional Design
+- **AI Response**: "Generated Unit 7 functional-design artifacts covering recorded-library assembly, recorded-playback transitions, deletion validation, and explicit Live TV stop behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/functional-design/business-logic-model.md`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/functional-design/business-rules.md`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/functional-design/domain-entities.md`
+- **Context**:
+  - The design preserves local-first ordering, merged library items, strict mutation validation, and shared session-control semantics.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Functional Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 7 functional-design artifacts before proceeding to NFR Requirements."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/functional-design/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Functional Design Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the Unit 7 functional-design artifacts and proceeded to NFR Requirements."
+- **Context**:
+  - Approved folder: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/functional-design/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Requirements
+- **AI Response**: "Generated Unit 7 NFR requirements and quality-attribute scenarios for recorded-library reads, playback and delete safety, and explicit Live TV stop behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-requirements/nfr-requirements.md`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-requirements/quality-attribute-scenarios.md`
+- **Context**:
+  - NFRs emphasize degraded reads, strict mutation validation, non-retry destructive actions, and prompt stop semantics.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Requirements Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 7 NFR requirements before proceeding to NFR Design."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-requirements/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Requirements Approval
+- **User Input**: "cotinue"
+- **AI Response**: "Interpreted the response as approval to continue and proceeded to Unit 7 NFR Design."
+- **Context**:
+  - The response clearly matched the standardized `Continue to Next Stage` option despite the typo.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Design
+- **AI Response**: "Generated Unit 7 NFR design artifacts for deterministic catalog merge, snapshot validation, shared playback reuse, safe deletion, and prompt Live TV stop behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-design/logical-components.md`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-design/nfr-design-patterns.md`
+- **Context**:
+  - The design keeps degraded reads separate from strict playback or deletion actions and extends the existing playback service rather than introducing a new controller.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 7 NFR design artifacts before proceeding to Infrastructure Design or Code Generation."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-design/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 NFR Design Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the Unit 7 NFR design artifacts and moved past infrastructure design into Unit 7 code-generation planning."
+- **Context**:
+  - Approved folder: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/nfr-design/`
+  - Infrastructure design was skipped because Unit 7 does not introduce new deployment topology or cloud resources.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Infrastructure Design
+- **AI Response**: "Skipped infrastructure design because the unit changes only backend application behavior and does not add new infrastructure services or deployment architecture."
+- **Context**:
+  - Skip reason is non-blocking and consistent with the approved application design.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Planning
+- **AI Response**: "Created the Unit 7 code-generation plan for recorded-library endpoints, recorded playback, deletion, and explicit Live TV stop behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-7-dvr-library-playback-maintenance-code-generation-plan.md`
+- **Context**:
+  - The plan targets `backend/src/dvr.rs`, `backend/src/models.rs`, `backend/src/playback.rs`, `backend/src/http/routes.rs`, related tests, and the Unit 7 code summary.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the Unit 7 code-generation plan before modifying application code for Unit 7."
+- **Context**:
+  - Plan artifact: `aidlc-docs/construction/plans/unit-7-dvr-library-playback-maintenance-code-generation-plan.md`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the Unit 7 code-generation plan and proceeded to implement the backend recorded-library, recorded-playback, deletion, and shared stop behavior changes."
+- **Context**:
+  - Approved plan: `aidlc-docs/construction/plans/unit-7-dvr-library-playback-maintenance-code-generation-plan.md`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation
+- **AI Response**: "Implemented recorded-library endpoints, recorded playback through the shared playback service, validated delete behavior, and added Unit 7 contract coverage."
+- **Artifacts Generated**:
+  - `backend/tests/dvr_contract.rs`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/summary.md`
+- **Context**:
+  - Modified files include `backend/src/dvr.rs`, `backend/src/models.rs`, `backend/src/playback.rs`, `backend/src/http/routes.rs`, and `backend/src/http/types.rs`.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Validation
+- **AI Response**: "Ran `cargo test` in `backend/` and all backend unit, contract, and property tests passed with the new Unit 7 DVR coverage included."
+- **Context**:
+  - Validation includes the new `tests/dvr_contract.rs` suite.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the generated Unit 7 backend code before moving to Unit 8 or Build and Test."
+- **Context**:
+  - Application code is ready for review in `backend/`.
+  - Documentation summary is ready in `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/summary.md`.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 7 Code Generation Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the generated Unit 7 backend code and proceeded to Unit 8 functional design."
+- **Context**:
+  - Approved application code: `backend/`
+  - Approved documentation: `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/summary.md`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 Functional Design Planning
+- **AI Response**: "Created the Unit 8 functional-design planning document for the DVR client workspace, recorded interactions, and rule-management entry points."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-8-dvr-client-workspace-functional-design-plan.md`
+- **Context**:
+  - Planning focuses on recordings-list shape, recorded playback behavior, delete confirmation UX, readiness visibility, and rule-entry points.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 Functional Design Answers
+- **User Input**: "1B 2A 3B 4A 5A"
+- **AI Response**: "Mapped the shorthand answers to the Unit 8 UI decisions and used them to finalize the client functional design."
+- **Context**:
+  - Q1 recordings list: group by series with expandable episode rows
+  - Q2 recorded playback behavior: stay in DVR workspace and switch player panel into recorded mode
+  - Q3 delete confirmation: dialog with Delete, Delete & Re-record, and Cancel
+  - Q4 readiness visibility: prominent top-of-workspace banner
+  - Q5 rule entry: entry points from both upcoming items and recording details with focused editor surface
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 Functional Design
+- **AI Response**: "Generated Unit 8 functional-design artifacts for the DVR workspace layout, recordings browser, recorded playback presentation, delete confirmation UX, and rule-entry behavior."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/functional-design/business-logic-model.md`
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/functional-design/business-rules.md`
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/functional-design/domain-entities.md`
+- **Context**:
+  - The design keeps DVR interactions in a dedicated workspace while reusing the shared player surface.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 Functional Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 8 functional-design artifacts before proceeding to NFR Requirements."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-8-dvr-client-workspace/functional-design/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 Functional Design Approval
+- **User Input**: "Continue"
+- **AI Response**: "Accepted the Unit 8 functional-design artifacts and proceeded to NFR Requirements."
+- **Context**:
+  - Approved folder: `aidlc-docs/construction/unit-8-dvr-client-workspace/functional-design/`
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 NFR Requirements
+- **AI Response**: "Generated Unit 8 NFR requirements and quality-attribute scenarios for the DVR client workspace."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-requirements/nfr-requirements.md`
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-requirements/quality-attribute-scenarios.md`
+- **Context**:
+  - The NFRs focus on clarity, state coherence, delete safety, and responsive desktop behavior.
+
+## 2026-05-24T19:11:33Z
+- **Stage**: DVR Feature Unit 8 NFR Requirements Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 8 NFR requirements before proceeding to NFR Design."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-requirements/`
+
+## 2026-05-24T19:36:21Z
+- **Stage**: DVR Feature Backend Testing Decision
+- **User Input**: "prompt 'ask_user' , what is the next step from here? Is this ready for testing"
+- **AI Response**: "Explained that Unit 7 backend was ready for targeted backend testing, while the full DVR feature was not yet ready for end-to-end testing because Unit 8 and Unit 9 remain unfinished."
+- **Context**:
+  - The next workflow step remains Unit 8 NFR Design unless the user pauses for backend testing.
+
+## 2026-05-24T19:36:21Z
+- **Stage**: DVR Feature Backend Testing Selection
+- **User Input**: "let's do 1"
+- **AI Response**: "Paused the workflow to execute backend-only smoke testing against the live loopback service."
+- **Context**:
+  - Selected option: backend testing now.
+
+## 2026-05-24T19:36:21Z
+- **Stage**: DVR Feature Backend Smoke Test
+- **AI Response**: "Started the backend with `cargo run`, confirmed the loopback service was reachable, and smoke-tested health, bootstrap, devices, DVR readiness, DVR recordings, DVR rules, DVR upcoming, and playback current endpoints."
+- **Context**:
+  - `/api/health` returned ready.
+  - `/api/bootstrap` advertised the new DVR contract endpoints.
+  - `/api/dvr/rules` returned `ready` with an empty rules list.
+  - `/api/dvr/readiness` returned `not_ready` because the currently selected device did not expose a DVR storage endpoint.
+  - `/api/dvr/recordings` returned `unavailable` with no storage sources available.
+  - `/api/playback/current` reported that `mpv` is not currently installed or configured for playback testing.
+
+## 2026-05-24T19:36:21Z
+- **Stage**: DVR Feature Real-Device Smoke Test Preparation
+- **User Input**: "prepare real device backend smoke test"
+- **AI Response**: "Created a real-device backend smoke-test checklist covering device selection, DVR readiness, recordings, recorded playback, stop behavior, and optional mutation tests."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/real-device-backend-smoke-test.md`
+- **Context**:
+  - The checklist is ordered with non-destructive checks first and destructive delete testing last.
+
+## 2026-05-24T19:41:03Z
+- **Stage**: DVR Feature Real-Device Smoke Test Execution
+- **User Input**: "always prompt user using 'ask_user'  if you need clarification or if you need to confirm with next step. Let's do real device smotke test"
+- **AI Response**: "Started the backend in client-managed playback mode, executed the real-device non-destructive smoke checks, and extended the test to live tuner playback and stop behavior."
+- **Context**:
+  - `/api/health` returned ready.
+  - `/api/devices` returned one selected device: `hdhr-10ab47d5`.
+  - `/api/dvr/readiness` returned `not_ready` with blocking `missing_storage`.
+  - `/api/dvr/rules` returned `ready` with an empty rule list.
+  - `/api/dvr/recordings` returned `unavailable` because no DVR storage sources were available.
+  - `/api/dvr/upcoming` returned `unavailable`.
+  - `/api/playback/current` in client-managed mode returned adapter-ready without `mpv` warnings.
+  - `/api/lineup` returned a real playable channel list.
+  - `POST /api/playback/start` for channel `5.1` succeeded and set `playbackMode` to `live`.
+  - `POST /api/playback/stop` succeeded and left the session in `stopped` state with remembered channel context intact.
+  - The backend was shut down after the smoke test completed.
+
+## 2026-05-24T19:41:03Z
+- **Stage**: DVR Feature Environment Recheck Request
+- **User Input**: "I just connected a storage, please do the smoke test again"
+- **AI Response**: "Restarted the backend and reran the real-device DVR smoke test against the updated hardware state."
+- **Context**:
+  - Goal was to verify whether a newly attached storage device would expose `StorageURL` and unblock DVR readiness.
+
+## 2026-05-24T19:41:03Z
+- **Stage**: DVR Feature Environment Recheck Result
+- **AI Response**: "Confirmed that the device now exposes DVR storage and that backend DVR readiness is fully enabled."
+- **Context**:
+  - Direct `discover.json` now includes `StorageID`, `StorageURL`, `TotalSpace`, and `FreeSpace`.
+  - `/api/dvr/readiness` returned `ready` with `usable=true`.
+  - `/api/dvr/recordings` returned `ready` with an empty recordings list.
+  - `/api/dvr/rules` returned `ready` with an empty rule list.
+  - `/api/dvr/upcoming` remained `unavailable` because no upcoming items are currently present.
+  - Playback adapter remained ready in client-managed mode.
+
+## 2026-05-24T19:53:40Z
+- **Stage**: DVR Feature Temporary Rule Smoke Test Request
+- **User Input**: "test both series and one time, pick one that is save. Make sure you clean up after"
+- **AI Response**: "Selected a future guide airing as a safe temporary target, created both a series rule and a one-time rule for testing, verified backend state transitions, and cleaned both rules up afterward."
+- **Context**:
+  - Target title: `Channel 2 News`
+  - Target SeriesID: `C12656981ENJHYU`
+  - Target channel: `2.1`
+  - Target one-time start: `1779660000`
+
+## 2026-05-24T19:53:40Z
+- **Stage**: DVR Feature Temporary Rule Smoke Test Result
+- **AI Response**: "Validated both backend creation flows and successful cleanup for temporary DVR rules on the real device environment."
+- **Context**:
+  - Series rule creation returned `confirmed` and produced rule `8958522`.
+  - After series creation, `/api/dvr/rules` showed one rule and `/api/dvr/upcoming` exposed one schedule projection entry.
+  - Series rule cleanup succeeded and `/api/dvr/rules` returned to zero rules.
+  - One-time rule creation returned `confirmed` and produced rule `8958523`.
+  - After one-time creation, `/api/dvr/rules` showed one rule and `/api/dvr/upcoming` moved to `ready` with one projection entry.
+  - One-time rule cleanup succeeded and `/api/dvr/rules` returned to zero rules.
+  - No temporary rules were intentionally left behind.
+
+## 2026-05-24T19:53:40Z
+- **Stage**: DVR Feature Recorded Playback/Delete Test Preparation
+- **User Input**: "3"
+- **AI Response**: "Prepared a focused checklist for the remaining real-device recorded playback and deletion tests to use once at least one recording exists."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/recorded-playback-delete-smoke-test.md`
+- **Context**:
+  - The checklist covers playback mode verification, stop-after-recorded-playback, delete confirmation, and stale delete retry behavior.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Immediate Recording Staging Request
+- **User Input**: "king of queens"
+- **AI Response**: "Selected the future airing for The King of Queens, verified the start time was still valid, and created a one-time recording rule through the backend to generate a real recording for later playback and delete testing."
+- **Context**:
+  - Selected title: `The King of Queens`
+  - SeriesID: `C184408EN6WDR`
+  - Channel: `4.2`
+  - StartTime: `1779652800`
+  - EpisodeTitle: `Shrink Wrap`
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Immediate Recording Staging Result
+- **AI Response**: "Confirmed that the one-time recording rule was accepted and that DVR upcoming state now shows the scheduled airing explicitly."
+- **Context**:
+  - Backend one-time rule creation returned `confirmed`.
+  - Created rule ID: `8958526`.
+  - `/api/dvr/rules` showed the one-time rule after creation.
+  - `/api/dvr/upcoming` returned `ready` and included the scheduled airing with explicit-upcoming projection.
+  - The backend debug process was then stopped; the rule remains active on the DVR environment until later cleanup.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Workflow Resumption
+- **User Input**: "let's continue with AI-DLC workflow. I will remind you later to get back to this test"
+- **AI Response**: "Resumed the AI-DLC workflow at Unit 8 NFR Design while keeping the pending recording-validation follow-up noted for later."
+- **Context**:
+  - The real-device recording test remains pending until the scheduled recording completes.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Unit 8 NFR Design
+- **AI Response**: "Generated Unit 8 NFR design artifacts aligned to the existing Qt/QML client shell and shared player architecture."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-design/logical-components.md`
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-design/nfr-design-patterns.md`
+- **Context**:
+  - The design reuses the current single-controller client shape and avoids introducing a second DVR-specific player architecture.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Unit 8 NFR Design Approval Prompt
+- **AI Response**: "Prepared to request review and approval of the Unit 8 NFR design artifacts before proceeding to Infrastructure Design or Code Generation."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-8-dvr-client-workspace/nfr-design/`
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Unit 8 NFR Design Approval
+- **User Input**: "continue next stage"
+- **AI Response**: "Accepted the Unit 8 NFR design artifacts, skipped infrastructure design, and proceeded to Unit 8 code-generation planning."
+- **Context**:
+  - Infrastructure design was skipped because Unit 8 only changes client application behavior and adds no new infrastructure topology.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Unit 8 Code Generation Planning
+- **AI Response**: "Created the Unit 8 code-generation plan for the DVR client workspace, grouped recordings UI, recorded playback presentation, delete confirmation, and rule-entry flows."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-8-dvr-client-workspace-code-generation-plan.md`
+- **Context**:
+  - The plan targets the existing `AppController`, `Main.qml`, and new QML components under `client/qml/components/`.
+
+## 2026-05-24T19:56:55Z
+- **Stage**: DVR Feature Unit 8 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the Unit 8 code-generation plan before modifying client application code."
+- **Context**:
+  - Plan artifact: `aidlc-docs/construction/plans/unit-8-dvr-client-workspace-code-generation-plan.md`
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 8 Code Generation Approval
+- **User Input**: "continue"
+- **AI Response**: "Started Unit 8 code generation for the DVR client workspace using the approved brownfield plan."
+- **Context**:
+  - Implementation proceeded in the existing Qt/QML client shell and `AppController` surface.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 8 Code Generation Result
+- **AI Response**: "Implemented the first DVR workspace in the client, including workspace switching, recordings grouping, readiness banners, recorded playback reuse of the shared player, delete confirmation, and focused rule-entry dialogs."
+- **Artifacts Generated**:
+  - `client/src/dvrworkspacehelpers.h`
+  - `client/src/dvrworkspacehelpers.cpp`
+  - `client/tests/dvrworkspacehelpers_tests.cpp`
+  - `client/qml/components/DvrStatusBanner.qml`
+  - `client/qml/components/DvrRecordingsPanel.qml`
+  - `client/qml/components/DvrDetailsPanel.qml`
+  - `client/qml/components/DvrUpcomingPanel.qml`
+  - `client/qml/components/DvrRuleEditorDialog.qml`
+  - `client/qml/components/DvrDeleteDialog.qml`
+  - `aidlc-docs/construction/unit-8-dvr-client-workspace/code/summary.md`
+- **Context**:
+  - Updated `Main.qml`, `AppController`, and `CMakeLists.txt` in-place as brownfield changes.
+  - Recorded-playback presentation remains on the shared playback stage rather than creating a second player stack.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 8 Code Generation Validation
+- **AI Response**: "Built the client and ran the client test suite successfully after the Unit 8 changes."
+- **Validation**:
+  - `cmake --build /home/felix/src/hdhomerun/hdhomerun-linux/build/client`
+  - `ctest --output-on-failure` in `/home/felix/src/hdhomerun/hdhomerun-linux/build/client`
+- **Context**:
+  - Passed tests: `client-offscreen-smoke`, `backendlaunchconfig-tests`, `channelnavigation-tests`, `dvrworkspacehelpers-tests`.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 8 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request review of the completed Unit 8 client implementation before moving to the next stage."
+- **Context**:
+  - Summary artifact: `aidlc-docs/construction/unit-8-dvr-client-workspace/code/summary.md`
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 8 Code Generation Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the completed Unit 8 implementation and advanced the workflow to Unit 9 DVR integration hardening and verification."
+- **Context**:
+  - Unit 9 begins the integration-hardening phase after Units 6 through 8 have working end-to-end DVR flows.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 Functional Design
+- **AI Response**: "Created the Unit 9 functional design artifacts for hardening targets, stale-state handling, mutation convergence, and verification boundaries."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/functional-design/business-rules.md`
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/functional-design/domain-entities.md`
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/functional-design/business-logic-model.md`
+- **Context**:
+  - The design focuses on integrated DVR behavior already implemented across Units 6 through 8 rather than introducing a new feature slice.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 Functional Design Approval Prompt
+- **AI Response**: "Prepared to request review of the Unit 9 functional design before continuing to the next stage."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/functional-design/`
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 Functional Design Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the Unit 9 functional design and advanced to Unit 9 NFR requirements."
+- **Context**:
+  - The next focus is reliability, safety, and verification behavior for the integrated DVR increment.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Requirements
+- **AI Response**: "Created the Unit 9 NFR requirements and quality attribute scenarios for stale-state recovery, playback transition correctness, degraded-state behavior, and verification quality."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-requirements/nfr-requirements.md`
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-requirements/quality-attribute-scenarios.md`
+- **Context**:
+  - Requirements focus on the integrated DVR system after Units 6 through 8, not on a new feature slice.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Requirements Approval Prompt
+- **AI Response**: "Prepared to request review of the Unit 9 NFR requirements before continuing to the next stage."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-requirements/`
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Requirements Approval
+- **User Input**: "continue"
+- **AI Response**: "Accepted the Unit 9 NFR requirements and advanced to Unit 9 NFR design."
+- **Context**:
+  - The next step defines concrete hardening and verification patterns for the integrated DVR increment.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Design
+- **AI Response**: "Created the Unit 9 NFR design artifacts covering outcome normalization, refresh convergence, shared playback integrity, trust-gated recovery, and layered verification."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-design/logical-components.md`
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-design/nfr-design-patterns.md`
+- **Context**:
+  - These patterns guide the remaining Unit 9 implementation decisions without redefining previously approved DVR feature boundaries.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Design Approval Prompt
+- **AI Response**: "Prepared to request review of the Unit 9 NFR design before continuing to the next stage."
+- **Context**:
+  - Review target: `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/nfr-design/`
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 NFR Design Approval
+- **User Input**: "continue to next stage"
+- **AI Response**: "Accepted the Unit 9 NFR design, skipped infrastructure design, and advanced to Unit 9 code-generation planning."
+- **Context**:
+  - Infrastructure design was skipped because Unit 9 is integration hardening and verification work with no new infrastructure topology.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 Code Generation Planning
+- **AI Response**: "Created the Unit 9 code-generation plan for backend and client hardening, targeted tests, and integrated DVR verification artifacts."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/plans/unit-9-dvr-integration-hardening-verification-code-generation-plan.md`
+- **Context**:
+  - The plan targets existing backend and client DVR seams instead of introducing a new feature slice.
+
+## 2026-05-24T20:17:43Z
+- **Stage**: DVR Feature Unit 9 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the Unit 9 code-generation plan before making further backend or client hardening changes."
+- **Context**:
+  - Plan artifact: `aidlc-docs/construction/plans/unit-9-dvr-integration-hardening-verification-code-generation-plan.md`
+
+## 2026-05-24T20:28:39Z
+- **Stage**: DVR Feature Unit 9 Code Generation Approval
+- **User Input**: "continue to next stage"
+- **AI Response**: "Started Unit 9 code generation for DVR integration hardening and verification."
+- **Context**:
+  - Implementation targeted backend recorded-stop cleanup, client playback-state interpretation, deterministic tests, and verification artifact refinement.
+
+## 2026-05-24T20:28:39Z
+- **Stage**: DVR Feature Unit 9 Code Generation Result
+- **AI Response**: "Completed a focused Unit 9 hardening pass covering stale delete behavior, recorded-stop cleanup, client playback-mode interpretation, additional tests, and updated real-device verification guidance."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/code/summary.md`
+- **Context**:
+  - Backend stop behavior now clears recorded context after recorded playback stops.
+  - Client playback interpretation now follows explicit session mode and stopped-state handling more closely.
+  - Static DVR fixtures now mirror missing-recording warning behavior used by the real provider.
+
+## 2026-05-24T20:28:39Z
+- **Stage**: DVR Feature Unit 9 Code Generation Validation
+- **AI Response**: "Validated the Unit 9 changes with backend and client test suites."
+- **Validation**:
+  - `cargo test` in `/home/felix/src/hdhomerun/hdhomerun-linux/backend`
+  - `cmake --build /home/felix/src/hdhomerun/hdhomerun-linux/build/client`
+  - `ctest --output-on-failure` in `/home/felix/src/hdhomerun/hdhomerun-linux/build/client`
+- **Context**:
+  - Backend and client validations completed successfully after one fixture-alignment correction in the static DVR provider.
+
+## 2026-05-24T20:28:39Z
+- **Stage**: DVR Feature Unit 9 Code Generation Approval Prompt
+- **AI Response**: "Prepared to request review of the completed Unit 9 hardening implementation before moving to the next stage."
+- **Context**:
+  - Summary artifact: `aidlc-docs/construction/unit-9-dvr-integration-hardening-verification/code/summary.md`
+
+## 2026-05-24T20:28:39Z
+- **Stage**: DVR Feature Unit 9 Code Generation Approval Response
+- **User Input**: "continue to next stage"
+- **AI Response**: "Recorded approval of Unit 9 code generation and advanced to the Build and Test stage."
+- **Context**:
+  - Transition target: Build and Test
+
+## 2026-05-24T20:28:39Z
+- **Stage**: Build and Test
+- **AI Response**: "Generated the required build, unit-test, integration-test, performance-test, security-test, and summary instruction artifacts for the construction phase."
+- **Artifacts Generated**:
+  - `aidlc-docs/construction/build-and-test/build-instructions.md`
+  - `aidlc-docs/construction/build-and-test/unit-test-instructions.md`
+  - `aidlc-docs/construction/build-and-test/integration-test-instructions.md`
+  - `aidlc-docs/construction/build-and-test/performance-test-instructions.md`
+  - `aidlc-docs/construction/build-and-test/security-test-instructions.md`
+  - `aidlc-docs/construction/build-and-test/build-and-test-summary.md`
+- **Context**:
+  - Local backend and client automated validations were reflected in the summary.
+  - Manual real-device completed-recording validation remains documented as a follow-up path.
+
+## 2026-05-24T20:28:39Z
+- **Stage**: Build and Test Approval Prompt
+- **AI Response**: "Prepared to ask whether the workflow should proceed to the Operations stage placeholder."
+- **Context**:
+  - Summary artifact: `aidlc-docs/construction/build-and-test/build-and-test-summary.md`
+
+## 2026-05-24T20:36:14Z
+- **Stage**: Manual Real-Device DVR Follow-Up
+- **User Input**: "before proceed to operation stage, let's get back to the previous test which was waiting for the recording to finish. The recording has finished, please do the test."
+- **AI Response**: "Resumed the deferred completed-recording smoke test, investigated the initial failure, patched backend recording normalization through EpisodesURL expansion, reran automated backend coverage, and repeated the real-device playback/stop/delete workflow."
+- **Context**:
+  - Real device: `hdhr-10ab47d5`
+  - Recording under test: `The King of Queens - Shrink Wrap`
+
+## 2026-05-24T20:36:14Z
+- **Stage**: Manual Real-Device DVR Follow-Up Result
+- **AI Response**: "Real-device playback and recorded-stop cleanup now pass after the backend expanded top-level series aggregates into concrete episode entries. Real-device delete remains blocked because the device's own trusted CmdURL endpoint returns HTTP 400 Bad Request for the documented POST delete request."
+- **Validation**:
+  - `GET /api/dvr/recordings` returned the concrete episode entry after the backend fix
+  - `POST /api/dvr/recordings/{recordingId}/play` succeeded on the real device
+  - `POST /api/playback/stop` succeeded and cleared `currentRecording`
+  - direct `CmdURL` probes to `http://192.168.1.194/recorded/cmd?id=b3eff985d36bbf87` returned `400 Bad Request` for documented delete variants
+- **Context**:
+  - The completed recording remains present because cleanup could not be completed through the documented delete API path.
+
+## 2026-05-24T20:46:38Z
+- **Stage**: Manual Real-Device DVR Delete Investigation
+- **User Input**: "1"
+- **AI Response**: "Investigated the real-device delete failure beyond the loopback backend by probing the tuner's device pages, episode-level metadata, and the trusted CmdURL directly with documented and compatibility-oriented request variants."
+- **Validation**:
+  - `recorded_files.html` exposes playback links but no browser-side delete implementation to mirror
+  - episode-level JSON exposes `CmdURL` as `http://192.168.1.194/recorded/cmd?id=b3eff985d36bbf87`
+  - direct HTTP POST probes using `cmd=delete`, `cmd=delete&rerecord=0`, explicit form content type, body-carried `id`, and empty-body POST variants all returned `400 Bad Request`
+  - the device documentation page in `documentation.wiki/Old-Deleting-Recordings.md` still describes HTTP POST with `cmd=delete`, so the observed device behavior does not match the documented contract
+- **Context**:
+  - Current conclusion: the remaining delete failure appears to be upstream of the backend wrapper and should be treated as a device-side or firmware-contract blocker until additional vendor guidance is available.
+
+## 2026-05-24T20:53:30Z
+- **Stage**: Manual Real-Device DVR Delete Hardening
+- **AI Response**: "Updated backend delete handling so record-engine HTTP 400 responses now surface as explicit validation failures instead of generic internal errors, then revalidated the behavior against the real device."
+- **Validation**:
+  - `cargo test` in `/home/felix/src/hdhomerun/hdhomerun-linux/backend` passed after the change
+  - `POST /api/dvr/recordings/{recordingId}/delete` now returns `validation_failed` with a device-side rejection message on the real device
+- **Context**:
+  - The recording still remains present because the device CmdURL continues to reject the documented delete request, but the backend now reports that condition clearly.
+
+## 2026-05-24T21:05:13Z
+- **Stage**: Manual Real-Device DVR Delete Resolution
+- **User Input**: "I found some reddit user comment... curl -X POST \"http://192.168.0.21/recorded/cmd?id=f90a5d37b0b2956e&cmd=delete&rerecord=0\" ... Did you do a post operation?"
+- **AI Response**: "Confirmed that prior probes already used HTTP POST, then tested the community-reported query-string POST shape, verified it succeeds on the device, aligned the backend to that contract, and rechecked the post-delete loopback behavior."
+- **Validation**:
+  - direct device request `POST /recorded/cmd?id=b3eff985d36bbf87&cmd=delete&rerecord=0` returned `200 OK`
+  - `cargo test` in `/home/felix/src/hdhomerun/hdhomerun-linux/backend` passed after the backend change
+  - direct device `recorded_files.json?SeriesID=C184408EN6WDR` returned `[]` after deletion
+  - loopback `GET /api/dvr/recordings` returned an empty recordings list
+  - loopback stale delete returned `outcome: missing_recording` with refresh guidance warning text
+- **Context**:
+  - Current conclusion: the delete path is now understood and implemented for the tested firmware; the critical contract detail is that `cmd` and `rerecord` must be sent on the preserved `CmdURL` query string while still using HTTP POST.
+
+## 2026-05-24T21:06:30Z
+- **Stage**: Manual Real-Device DVR Delete Documentation Follow-Up
+- **User Input**: "2"
+- **AI Response**: "Documented the confirmed delete contract detail in the user-facing deletion wiki page and in the local recorded playback/delete smoke-test checklist."
+- **Artifacts Updated**:
+  - `documentation.wiki/Old-Deleting-Recordings.md`
+  - `aidlc-docs/construction/unit-7-dvr-library-playback-maintenance/code/recorded-playback-delete-smoke-test.md`
+- **Context**:
+  - The doc update captures the tested firmware behavior: HTTP POST remains required, but `cmd=delete&rerecord=0` must ride on the preserved `CmdURL` query string.
+
+## 2026-05-24T21:08:29Z
+- **Stage**: Build and Test Approval Response
+- **User Input**: "1"
+- **AI Response**: "Returned from the manual DVR investigation to the workflow handoff and reissued the Build and Test approval prompt."
+- **Context**:
+  - The delayed real-device validation thread was completed before resuming the Operations gate.
+
+## 2026-05-24T21:08:29Z
+- **Stage**: Operations Approval
+- **User Input**: "yes"
+- **AI Response**: "Recorded approval to proceed from Build and Test to the Operations placeholder stage."
+- **Context**:
+  - `aidlc-docs/aidlc-state.md` updated to `OPERATIONS - Placeholder`.
+
+## 2026-05-24T21:15:47Z
+- **Stage**: Operations Follow-Up
+- **User Input**: "I didn't see any DVR functionality in the laste appimage. Prompt me using 'ask_user' how to test this"
+- **AI Response**: "Prepared a direct AppImage validation checklist and response prompt so the packaged DVR workspace can be verified interactively."
+- **Context**:
+  - The next user-facing message will ask for the exact visible AppImage UI state and the key DVR checkpoints.
+
+## 2026-05-24T22:49:59Z
+- **Stage**: Operations Packaging Troubleshooting
+- **User Input**: "let's do troubleshooting, prompt 'ask_user'"
+- **AI Response**: "Confirmed the prior AppImage was stale, rebuilt the distribution pipeline successfully, and prepared a fresh AppImage validation prompt for the newly generated artifact."
+- **Validation**:
+  - `./packaging/build-and-verify-dist.sh` completed successfully
+  - rebuilt artifact: `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+  - rebuilt timestamp: `May 24 18:49`
+- **Context**:
+  - The next troubleshooting step is to launch the fresh AppImage and confirm whether the DVR workspace is now visible.
+
+## 2026-05-24T23:33:23Z
+- **Stage**: Operations UI Packaging Troubleshooting
+- **AI Response**: "Fixed the DVR upcoming-panel header layout so the Refresh button remains inside the panel boundary at narrower widths, validated the client build/tests, and rebuilt the AppImage."
+- **Validation**:
+  - `cmake --build build/client && ctest --output-on-failure` passed
+  - rebuilt artifact: `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+  - rebuilt timestamp: `May 24 19:33`
+- **Context**:
+  - The next user-facing check is to relaunch the rebuilt AppImage and confirm whether the upcoming-panel overflow is resolved.
+
+## 2026-05-24T23:49:04Z
+- **Stage**: New DVR Rule-Entry UI Increment
+- **User Input**: "let's build a UI components to create recording rule for both series or individual recording... I would suggest to have the same EPG guide like in the live TV tab. User can pick the item to do recording rule. Make it interactive to either do single record or series recording."
+- **AI Response**: "Added a guide-based DVR rule-entry path by preserving `SeriesID` in backend guide entries, exposing a `Record` action on Live TV guide items, reusing the existing rule dialog for series and one-time creation, and rebuilding the AppImage for testing."
+- **Validation**:
+  - `cargo test` passed in `/home/felix/src/hdhomerun/hdhomerun-linux/backend`
+  - `cmake --build build/client && ctest --output-on-failure` passed
+  - rebuilt artifact: `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+  - rebuilt timestamp: `May 24 19:48`
+- **Context**:
+  - The next user-facing check is to confirm that a Live TV guide item now exposes a `Record` action and opens the rule dialog with both series and one-time options.
+
+## 2026-05-25T00:09:24Z
+- **Stage**: New DVR Rule-Entry UI Revision
+- **User Input**: "the record button is a bad idea. I wolld like the user to click the grid, then there is a pop up window option for recording rule option." and "3"
+- **AI Response**: "Revised the Live TV guide interaction so clicking a program tile opens a popup dialog with `Watch`, `Record Series`, `Record Once`, and `Cancel`, then rebuilt the AppImage for retest."
+- **Validation**:
+  - `cmake --build build/client && ctest --output-on-failure` passed
+  - rebuilt artifact: `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+  - rebuilt timestamp: `May 24 20:08`
+- **Context**:
+  - The next user-facing check is to confirm that clicking a guide tile opens the action popup and that the two recording actions behave correctly.
+
+## 2026-05-25T00:21:54Z
+- **Stage**: DVR Upcoming Rule Deletion Increment
+- **User Input**: "I don't see functionality to delete upcoming recording." and "A"
+- **AI Response**: "Added backend support for deleting DVR recording rules by `RecordingRuleID`, exposed a delete-rule action with confirmation in the Upcoming panel, validated backend and client tests, and rebuilt the AppImage for retest."
+- **Validation**:
+  - `cargo test --manifest-path backend/Cargo.toml` passed
+  - `cmake --build build/client && ctest --output-on-failure` passed
+  - rebuilt artifact: `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
+  - rebuilt timestamp: `May 24 20:21`
+- **Context**:
+  - Upcoming items now expose a `Delete Rule` action; for series-backed upcoming items the confirmation warns that future airings tied to that rule will also be removed.
+
+## 2026-05-24T18:05:28Z
+- **Stage**: DVR Feature User Stories Planning Input
+- **User Input**: "1b 2c 3c 4b 5b 6a"
+- **AI Response**: "Recorded the story-planning answers, resolved the planning choices without remaining ambiguity, and selected a hybrid story structure with comprehensive acceptance criteria and medium-sized stories."
+- **Context**:
+  - Persona strategy: reuse existing personas and add one DVR-focused power-user persona.
+  - Breakdown approach: hybrid journey plus feature.
+  - Acceptance criteria: comprehensive.
+  - Story size: medium.
+  - Live TV stop behavior: separate story in the same increment.
+  - First-story-set emphasis: library and playback first.
+
+## 2026-05-24T18:05:28Z
+- **Stage**: DVR Feature User Stories Plan Approval Prompt
+- **AI Response**: "Prepared to request explicit approval of the selected user-stories plan before generating personas and stories."
+- **Context**:
+  - Plan artifact: `aidlc-docs/inception/plans/story-generation-plan.md`
+  - Approval is required before story generation can begin.

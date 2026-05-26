@@ -65,3 +65,46 @@
 - `startBundledBackend() -> ProcessHandle`
 - `probeBackendHealth() -> HealthStatus`
 - `connectToManagedBackend() -> HealthStatus`
+
+## DVR Workspace Component
+- `loadDvrHome() -> DvrHomeView`
+- `selectRecording(recordingId: string) -> RecordingDetailView`
+- `filterRecordings(filter: RecordingFilter) -> RecordingSummary[]`
+- `openRuleEditor(context: RuleEditorContext) -> RuleEditorView`
+
+## Recording Rule Editor Component
+- `createSeriesRule(request: CreateSeriesRuleRequest) -> RecordingRuleView`
+- `createOneTimeRule(request: CreateOneTimeRuleRequest) -> RecordingRuleView`
+- `updateRule(ruleId: string, request: UpdateRecordingRuleRequest) -> RecordingRuleView`
+- `deleteRule(ruleId: string) -> DeleteRuleResult`
+
+## DVR Integration Component
+- `fetchRecordingRules(deviceAuth: DeviceAuthRef) -> RecordingRuleRecord[]`
+- `fetchEpisodes(query: EpisodeQuery) -> EpisodeRecord[]`
+- `fetchUpcomingRecordings(deviceAuth: DeviceAuthRef) -> UpcomingRecordingRecord[]`
+- `fetchRecordedFiles(storageRef: StorageRef) -> RecordedFileRecord[]`
+- `syncRecordingEvents(storageRef: StorageRef) -> SyncResult`
+
+## Recording Catalog Resolver
+- `resolvePreferredStorage(sources: StorageSourceRecord[]) -> StorageSourceRecord[]`
+- `buildRecordingCatalog(sources: StorageSourceRecord[]) -> RecordingCatalog`
+- `resolvePlaybackTarget(recordingId: string) -> RecordingPlaybackTarget`
+- `resolveDeleteCommand(recordingId: string) -> RecordingDeleteTarget`
+
+## Playback Stop Coordinator
+- `stopLivePlayback(sessionId: string) -> PlaybackSessionStopped`
+
+## Backend API Host DVR Endpoints
+- `GET /api/dvr/readiness -> DvrReadinessView`
+- `GET /api/dvr/home -> DvrHomeView`
+- `GET /api/dvr/recordings -> RecordingSummary[]`
+- `GET /api/dvr/recordings/{recordingId} -> RecordingDetailView`
+- `POST /api/dvr/recordings/{recordingId}/play -> PlaybackSessionView`
+- `POST /api/dvr/recordings/{recordingId}/delete -> DeleteRecordingResult`
+- `GET /api/dvr/rules -> RecordingRuleView[]`
+- `POST /api/dvr/rules/series -> RecordingRuleView`
+- `POST /api/dvr/rules/one-time -> RecordingRuleView`
+- `PUT /api/dvr/rules/{ruleId} -> RecordingRuleView`
+- `DELETE /api/dvr/rules/{ruleId} -> DeleteRuleResult`
+- `GET /api/dvr/upcoming -> UpcomingRecordingView[]`
+- `POST /api/playback/stop -> PlaybackSessionStopped`

@@ -110,11 +110,7 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
-            if (window.dvrWorkspaceActive) {
-                window.adjustActivePlaybackVolume(0.05)
-                return
-            }
-            appController.playAdjacentChannel(-1)
+            window.adjustActivePlaybackVolume(0.05)
         }
     }
 
@@ -123,11 +119,7 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         onActivated: {
             window.bumpOverlay()
-            if (window.dvrWorkspaceActive) {
-                window.adjustActivePlaybackVolume(-0.05)
-                return
-            }
-            appController.playAdjacentChannel(1)
+            window.adjustActivePlaybackVolume(-0.05)
         }
     }
 
@@ -419,6 +411,7 @@ ApplicationWindow {
                     fullscreenMode: window.fullscreenMode
                     overlayPulse: window.overlayPulse
                     shellPhase: appController.shellPhase
+                    currentChannelRef: appController.currentChannelRef
                     currentTitle: appController.stageTitle
                     currentSubtitle: appController.stageSubtitle
                     warningText: appController.stageWarning
@@ -437,6 +430,7 @@ ApplicationWindow {
                     onToggleFullscreenRequested: window.toggleFullscreen()
                     onRetryRequested: appController.retryPlayback()
                     onStopPlaybackRequested: appController.stopPlayback()
+                    onPlayChannelRequested: function(channelRef) { appController.playChannel(channelRef) }
                     onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                 }
 
@@ -549,6 +543,7 @@ ApplicationWindow {
                 fullscreenMode: window.fullscreenMode
                 overlayPulse: window.overlayPulse
                 shellPhase: appController.shellPhase
+                currentChannelRef: appController.currentChannelRef
                 currentTitle: appController.stageTitle
                 currentSubtitle: appController.stageSubtitle
                 warningText: appController.stageWarning
@@ -567,6 +562,7 @@ ApplicationWindow {
                 onToggleFullscreenRequested: window.toggleFullscreen()
                 onRetryRequested: appController.retryPlayback()
                 onStopPlaybackRequested: appController.stopPlayback()
+                onPlayChannelRequested: function(channelRef) { appController.playChannel(channelRef) }
                 onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
             }
         }
@@ -647,6 +643,7 @@ ApplicationWindow {
                         fullscreenMode: window.fullscreenMode
                         overlayPulse: window.overlayPulse
                         shellPhase: appController.shellPhase
+                        currentChannelRef: appController.currentChannelRef
                         currentTitle: appController.stageTitle
                         currentSubtitle: appController.stageSubtitle
                         warningText: appController.stageWarning
@@ -665,6 +662,7 @@ ApplicationWindow {
                         onToggleFullscreenRequested: window.toggleFullscreen()
                         onRetryRequested: appController.retryPlayback()
                         onStopPlaybackRequested: appController.stopPlayback()
+                        onPlayChannelRequested: function(channelRef) { appController.playChannel(channelRef) }
                         onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                     }
 
@@ -762,6 +760,7 @@ ApplicationWindow {
                     fullscreenMode: window.fullscreenMode
                     overlayPulse: window.overlayPulse
                     shellPhase: appController.shellPhase
+                    currentChannelRef: appController.currentChannelRef
                     currentTitle: appController.stageTitle
                     currentSubtitle: appController.stageSubtitle
                     warningText: appController.stageWarning
@@ -780,6 +779,7 @@ ApplicationWindow {
                     onToggleFullscreenRequested: window.toggleFullscreen()
                     onRetryRequested: appController.retryPlayback()
                     onStopPlaybackRequested: appController.stopPlayback()
+                    onPlayChannelRequested: function(channelRef) { appController.playChannel(channelRef) }
                     onPlayRecordingRequested: function(recordingId) { appController.playRecording(recordingId) }
                 }
 

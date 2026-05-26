@@ -96,3 +96,51 @@
   - verify the backend is available before the client proceeds
 - **Interfaces**:
   - local process management boundary between app startup and backend runtime
+
+## DVR Increment Components
+
+## 11. DVR Workspace Component
+- **Purpose**: Present the DVR tab as a split workspace with a recording library on one side and details or actions on the other.
+- **Responsibilities**:
+  - load and render DVR readiness, recordings, and upcoming status in one navigation surface
+  - keep list selection, filters, and details-panel state coherent while data refreshes
+  - surface actions for playback, deletion, and rule management without mixing vendor logic into the client
+- **Interfaces**:
+  - consumes DVR endpoints from the loopback HTTP/JSON API
+  - delegates playback actions to existing playback session flows
+
+## 12. Recording Rule Editor Component
+- **Purpose**: Support the approved hybrid rule-management UX.
+- **Responsibilities**:
+  - open quick-create actions from guide, episodes, or recordings context
+  - provide a fuller dedicated editor for advanced options such as padding and channel constraints
+  - render validation errors returned by the backend without duplicating rule logic in QML
+- **Interfaces**:
+  - consumes DVR rule endpoints from the backend API
+
+## 13. DVR Integration Component
+- **Purpose**: Encapsulate all HDHomeRun DVR API interactions that are not part of live playback discovery.
+- **Responsibilities**:
+  - call vendor-side DVR endpoints for recording rules, episodes, upcoming state, and related metadata
+  - query discovered storage engines and record-engine endpoints for recorded files and sync operations
+  - normalize vendor and local DVR payloads into backend domain models
+- **Interfaces**:
+  - internal backend service API only
+
+## 14. Recording Catalog Resolver
+- **Purpose**: Resolve the authoritative recorded-library view from multiple storage sources.
+- **Responsibilities**:
+  - prioritize local storage sources ahead of non-local sources
+  - merge duplicate or overlapping recording representations into one client-facing catalog model
+  - retain source metadata for diagnostics, playback routing, and deletion commands
+- **Interfaces**:
+  - internal backend service API only
+
+## 15. Playback Stop Coordinator
+- **Purpose**: Provide a clear backend-owned stop boundary for live sessions.
+- **Responsibilities**:
+  - terminate live playback without shutting down the app shell
+  - release playback-session state and tuner-facing session context cleanly
+  - preserve the distinction between stopping playback and exiting the app
+- **Interfaces**:
+  - internal backend service API only
