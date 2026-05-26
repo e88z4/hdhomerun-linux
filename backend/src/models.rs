@@ -208,6 +208,7 @@ pub struct GuideEntry {
     pub episode_title: Option<String>,
     pub synopsis: Option<String>,
     pub image_url: Option<String>,
+    pub series_id: Option<String>,
     pub is_current: bool,
 }
 
@@ -286,6 +287,14 @@ pub enum PlaybackSessionStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum PlaybackMode {
+    Idle,
+    Live,
+    Recorded,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum PlayerAdapterStatus {
     NotStarted,
     ProcessStarting,
@@ -300,6 +309,7 @@ pub enum PlayerAdapterStatus {
 pub struct PlaybackSessionState {
     pub session_id: Option<String>,
     pub status: PlaybackSessionStatus,
+    pub playback_mode: PlaybackMode,
     pub selected_device_ref: Option<String>,
     pub channel_ref: Option<String>,
     pub playback_url: Option<String>,
@@ -313,6 +323,7 @@ impl PlaybackSessionState {
         Self {
             session_id: None,
             status: PlaybackSessionStatus::Idle,
+            playback_mode: PlaybackMode::Idle,
             selected_device_ref: None,
             channel_ref: None,
             playback_url: None,
@@ -370,6 +381,7 @@ pub struct PlaybackCurrentResponse {
     pub session_state: PlaybackSessionState,
     pub adapter_state: PlayerAdapterState,
     pub current_channel: Option<LineupChannel>,
+    pub current_recording: Option<PlaybackRecordingSummary>,
     pub selected_device_ref: Option<String>,
     pub warnings: Vec<String>,
     pub failure: Option<RetryablePlaybackFailure>,
@@ -382,6 +394,7 @@ impl PlaybackCurrentResponse {
             session_state: PlaybackSessionState::idle(),
             adapter_state: PlayerAdapterState::not_started(),
             current_channel: None,
+            current_recording: None,
             selected_device_ref: None,
             warnings: Vec::new(),
             failure: None,
@@ -396,8 +409,303 @@ pub struct PlaybackCommandResponse {
     pub session_state: PlaybackSessionState,
     pub adapter_state: PlayerAdapterState,
     pub current_channel: Option<LineupChannel>,
+    pub current_recording: Option<PlaybackRecordingSummary>,
     pub selected_device_ref: Option<String>,
     pub used_automatic_retry: bool,
     pub warnings: Vec<String>,
     pub failure: Option<RetryablePlaybackFailure>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackRecordingSummary {
+    pub recording_id: String,
+    pub title: String,
+    pub episode_title: Option<String>,
+    pub image_url: Option<String>,
+    pub channel_name: Option<String>,
+    pub record_start_time: i64,
+    pub record_end_time: i64,
+    pub resume_position: i64,
+    pub watched: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrReadinessState {
+    Ready,
+    Degraded,
+    NotReady,
+    SelectionRequired,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrReadinessConditionSeverity {
+    Info,
+    Warning,
+    Blocking,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrReadinessConditionCode {
+    MissingDeviceAuth,
+    MissingStorage,
+    RecordEngineUnavailable,
+    UpstreamError,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrReadinessCondition {
+    pub code: DvrReadinessConditionCode,
+    pub severity: DvrReadinessConditionSeverity,
+    pub message: String,
+    pub recoverable: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrReadinessResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub state: DvrReadinessState,
+    pub usable: bool,
+    pub conditions: Vec<DvrReadinessCondition>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRuleKind {
+    Series,
+    OneTime,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRuleOptions {
+    #[serde(default)]
+    pub channel_only: Vec<String>,
+    #[serde(default)]
+    pub team_only: Vec<String>,
+    #[serde(default)]
+    pub recent_only: bool,
+    pub after_original_airdate_only: Option<i64>,
+    pub start_padding: Option<u32>,
+    pub end_padding: Option<u32>,
+    #[serde(default)]
+    pub unsupported_options: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSeriesRecordingRuleRequest {
+    pub series_id: String,
+    pub title: Option<String>,
+    #[serde(default)]
+    pub options: DvrRuleOptions,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateOneTimeRecordingRuleRequest {
+    pub series_id: String,
+    pub title: Option<String>,
+    pub start_time: i64,
+    pub channel_number: String,
+    #[serde(default)]
+    pub options: DvrRuleOptions,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRecordingRule {
+    pub recording_rule_id: String,
+    pub series_id: String,
+    pub title: String,
+    pub synopsis: Option<String>,
+    pub image_url: Option<String>,
+    pub kind: DvrRuleKind,
+    pub channel_only: Vec<String>,
+    pub team_only: Vec<String>,
+    pub recent_only: bool,
+    pub after_original_airdate_only: Option<i64>,
+    pub date_time_only: Option<i64>,
+    pub priority: Option<u32>,
+    pub start_padding: u32,
+    pub end_padding: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRulesState {
+    Ready,
+    Unavailable,
+    SelectionRequired,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRulesResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub state: DvrRulesState,
+    pub rules: Vec<DvrRecordingRule>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrUpcomingState {
+    Ready,
+    Degraded,
+    Unavailable,
+    SelectionRequired,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrUpcomingRecording {
+    pub recording_rule_id: String,
+    pub series_id: String,
+    pub program_id: String,
+    pub title: String,
+    pub episode_number: Option<String>,
+    pub episode_title: Option<String>,
+    pub synopsis: Option<String>,
+    pub image_url: Option<String>,
+    pub start_time: i64,
+    pub end_time: i64,
+    pub record_start_time: i64,
+    pub record_end_time: i64,
+    pub channel_number: String,
+    pub channel_name: String,
+    pub channel_image_url: Option<String>,
+    pub recording_rule_ext: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrScheduleProjectionState {
+    Scheduled,
+    NotScheduled,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrScheduleProjectionSource {
+    ExplicitUpcoming,
+    RuleContext,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrScheduleProjectionEntry {
+    pub series_id: String,
+    pub program_id: Option<String>,
+    pub title: String,
+    pub recording_rule_id: Option<String>,
+    pub state: DvrScheduleProjectionState,
+    pub reason: String,
+    pub source: DvrScheduleProjectionSource,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrUpcomingResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub state: DvrUpcomingState,
+    pub entries: Vec<DvrUpcomingRecording>,
+    pub schedule_projection: Vec<DvrScheduleProjectionEntry>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRecordingsState {
+    Ready,
+    Degraded,
+    Unavailable,
+    SelectionRequired,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRecordingSummary {
+    pub recording_id: String,
+    pub title: String,
+    pub episode_title: Option<String>,
+    pub synopsis: Option<String>,
+    pub image_url: Option<String>,
+    pub channel_name: Option<String>,
+    pub channel_number: Option<String>,
+    pub record_start_time: i64,
+    pub record_end_time: i64,
+    pub resume_position: i64,
+    pub watched: bool,
+    pub source_count: u32,
+    pub preferred_local: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRecordingsResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub state: DvrRecordingsState,
+    pub recordings: Vec<DvrRecordingSummary>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRecordingDeleteOutcome {
+    Confirmed,
+    MissingRecording,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRecordingDeleteResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub outcome: DvrRecordingDeleteOutcome,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRuleDeleteOutcome {
+    Confirmed,
+    MissingRule,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRuleDeleteResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub outcome: DvrRuleDeleteOutcome,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DvrRuleMutationOutcome {
+    Confirmed,
+    InvalidAiring,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DvrRuleMutationResponse {
+    pub status: ContractEndpointStatus,
+    pub selected_device_ref: Option<String>,
+    pub outcome: DvrRuleMutationOutcome,
+    pub rules: Vec<DvrRecordingRule>,
+    pub schedule_projection: Vec<DvrScheduleProjectionEntry>,
+    pub warnings: Vec<String>,
 }

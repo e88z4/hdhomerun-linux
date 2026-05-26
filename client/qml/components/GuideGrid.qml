@@ -13,6 +13,8 @@ Pane {
 
     signal channelActivated(string channelRef)
     signal jumpToNowRequested()
+    signal recordSeriesRequested(var guideContext)
+    signal recordOnceRequested(var guideContext)
 
     readonly property int labelWidth: 188
     readonly property int rowHeight: 72
@@ -21,6 +23,10 @@ Pane {
     readonly property int slotCount: Math.max(1, durationHours * 2)
     readonly property int scheduleWidth: slotCount * slotWidth
     readonly property double windowEnd: windowStart + (Math.max(1, durationHours) * 3600)
+    property var selectedGuideContext: ({})
+    property string selectedGuideChannelRef: ""
+    property string selectedGuideTitle: ""
+    property string selectedGuideSubtitle: ""
 
     function formatStamp(unixSeconds, pattern) {
         return Qt.formatDateTime(new Date(unixSeconds * 1000), pattern)
@@ -45,6 +51,26 @@ Pane {
         }
 
         return labelWidth + ((now - windowStart) / (windowEnd - windowStart)) * scheduleWidth
+    }
+
+    function guideRuleContext(channelData, entryData) {
+        return {
+            title: entryData.title,
+            episodeTitle: entryData.episodeTitle,
+            seriesId: entryData.seriesId,
+            channelNumber: channelData.guideNumber,
+            channelName: channelData.guideName,
+            startTime: entryData.startTime
+        }
+    }
+
+    function openGuideActions(channelData, entryData) {
+        selectedGuideContext = guideRuleContext(channelData, entryData)
+        selectedGuideChannelRef = channelData.channelRef
+        selectedGuideTitle = entryData.title
+        selectedGuideSubtitle = channelData.guideNumber + " " + channelData.guideName + " • "
+            + formatStamp(entryData.startTime, "MMM d h:mm AP")
+        guideActionDialog.open()
     }
 
     function currentChannelIndex() {
@@ -118,7 +144,7 @@ Pane {
                 Layout.fillWidth: true
             }
 
-            Button {
+            ThemeButton {
                 text: "Now"
                 onClicked: root.jumpToNowRequested()
             }
@@ -332,7 +358,7 @@ Pane {
 
                                     MouseArea {
                                         anchors.fill: parent
-                                        onClicked: root.channelActivated(rowItem.channelData.channelRef)
+                                        onClicked: root.openGuideActions(rowItem.channelData, entryRect.entryData)
                                     }
 
                                     RowLayout {
@@ -384,11 +410,106 @@ Pane {
                                                 elide: Text.ElideRight
                                             }
                                         }
+
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: guideActionDialog
+
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+        standardButtons: Dialog.NoButton
+        title: ""
+        width: 520
+        padding: 18
+
+        background: Rectangle {
+            radius: 24
+            color: "#0d1a24"
+            border.color: "#23445b"
+        }
+
+        Overlay.modal: Rectangle {
+            color: "#07111a"
+            opacity: 0.76
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: root.selectedGuideTitle
+                color: "#f2f7fb"
+                font.family: "IBM Plex Sans"
+                font.pixelSize: 18
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: root.selectedGuideSubtitle
+                color: "#dce6ed"
+                font.family: "IBM Plex Sans"
+                font.pixelSize: 13
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: "Choose what to do with this guide airing."
+                color: "#8ea7b9"
+                font.family: "IBM Plex Sans"
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
+        }
+
+        footer: RowLayout {
+            spacing: 10
+
+            Item { Layout.fillWidth: true }
+
+            ThemeButton {
+                text: "Cancel"
+                onClicked: guideActionDialog.close()
+            }
+
+            ThemeButton {
+                text: "Watch"
+                onClicked: {
+                    guideActionDialog.close()
+                    root.channelActivated(root.selectedGuideChannelRef)
+                }
+            }
+
+            ThemeButton {
+                text: "Record Series"
+                enabled: !!root.selectedGuideContext.seriesId
+                onClicked: {
+                    guideActionDialog.close()
+                    root.recordSeriesRequested(root.selectedGuideContext)
+                }
+            }
+
+            ThemeButton {
+                text: "Record Once"
+                enabled: !!root.selectedGuideContext.seriesId
+                    && !!root.selectedGuideContext.channelNumber
+                    && root.selectedGuideContext.startTime > 0
+                onClicked: {
+                    guideActionDialog.close()
+                    root.recordOnceRequested(root.selectedGuideContext)
                 }
             }
         }

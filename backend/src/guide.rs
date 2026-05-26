@@ -142,6 +142,7 @@ impl GuideProvider for StaticGuideProvider {
                             episode_title: None,
                             synopsis: None,
                             image_url: None,
+                            series_id: None,
                             is_current: true,
                         }]
                     })
@@ -201,6 +202,7 @@ pub fn resolve_schedule(
                             episode_title: entry.episode_title.clone(),
                             synopsis: entry.synopsis.clone(),
                             image_url: entry.image_url.clone(),
+                            series_id: entry.series_id.clone(),
                             is_current: now >= entry.start_time && now < entry.end_time,
                         })
                         .filter(|entry| !entry.title.is_empty())
@@ -257,11 +259,13 @@ pub struct GuideEntryWire {
     pub synopsis: Option<String>,
     #[serde(rename = "ImageURL")]
     pub image_url: Option<String>,
+    #[serde(rename = "SeriesID")]
+    pub series_id: Option<String>,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{GuideChannelWire, GuideEntryWire, resolve_current_programs};
+    use super::{GuideChannelWire, GuideEntryWire, resolve_current_programs, resolve_schedule};
     use crate::models::{ChannelAvailability, LineupChannel};
 
     fn sample_channel(guide_number: &str, guide_name: &str) -> LineupChannel {
@@ -293,6 +297,7 @@ mod tests {
                                 episode_title: None,
                                 synopsis: None,
                                 image_url: None,
+                                series_id: Some("series-news".to_string()),
                                 }],
                         },
                         GuideChannelWire {
@@ -306,6 +311,7 @@ mod tests {
                                 episode_title: None,
                                 synopsis: None,
                                 image_url: None,
+                                series_id: Some("series-weather".to_string()),
                                 }],
                         },
                 ];
@@ -330,11 +336,37 @@ mod tests {
                         episode_title: None,
                         synopsis: None,
                         image_url: None,
+                        series_id: Some("series-earlier".to_string()),
                         }],
                 }];
 
                 let programs = resolve_current_programs(&channels, &guide, 1_779_113_400).expect("programs");
 
         assert!(programs.is_empty());
+    }
+
+    #[test]
+    fn resolve_schedule_preserves_series_id_for_rule_creation() {
+        let channels = vec![sample_channel("5.1", "WRCB-HD")];
+        let guide = vec![GuideChannelWire {
+            guide_number: "5.1".to_string(),
+            guide_name: "WRCB-HD".to_string(),
+            image_url: None,
+            guide: vec![GuideEntryWire {
+                start_time: 1_779_111_200,
+                end_time: 1_779_114_800,
+                title: "Evening News".to_string(),
+                episode_title: None,
+                synopsis: None,
+                image_url: None,
+                series_id: Some("series-news".to_string()),
+            }],
+        }];
+
+        let schedule = resolve_schedule(&channels, &guide, 1_779_111_200, 4);
+
+        assert_eq!(schedule.len(), 1);
+        assert_eq!(schedule[0].entries.len(), 1);
+        assert_eq!(schedule[0].entries[0].series_id.as_deref(), Some("series-news"));
     }
 }

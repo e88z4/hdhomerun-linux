@@ -24,6 +24,8 @@ qt_add_executable(hdhomerun-linux-player
     src/backendlaunchconfig.h
     src/channelnavigation.cpp
     src/channelnavigation.h
+    src/dvrworkspacehelpers.cpp
+    src/dvrworkspacehelpers.h
     src/idleinhibitor.cpp
     src/idleinhibitor.h
 )
@@ -35,10 +37,17 @@ qt_add_qml_module(hdhomerun-linux-player
     QML_FILES
         qml/Main.qml
         qml/components/ChannelRail.qml
+        qml/components/DvrDeleteDialog.qml
+        qml/components/DvrDetailsPanel.qml
+        qml/components/DvrRecordingsPanel.qml
+        qml/components/DvrRuleEditorDialog.qml
+        qml/components/DvrStatusBanner.qml
+        qml/components/DvrUpcomingPanel.qml
         qml/components/GuideGrid.qml
         qml/components/IconButton.qml
         qml/components/PlaybackStage.qml
         qml/components/DiagnosticsDrawer.qml
+        qml/components/ThemeButton.qml
 )
 
 target_link_libraries(hdhomerun-linux-player
@@ -46,8 +55,8 @@ target_link_libraries(hdhomerun-linux-player
     Qt6::DBus
     Qt6::Network
     Qt6::Multimedia
-        Qt6::Quick
-        Qt6::QuickControls2
+    Qt6::Quick
+    Qt6::QuickControls2
 )
 
 install(TARGETS hdhomerun-linux-player
@@ -67,6 +76,7 @@ if(BUILD_TESTING)
         Qt6::Network
         Qt6::Test
     )
+
     qt_add_executable(channelnavigation-tests
         src/channelnavigation.cpp
         src/channelnavigation.h
@@ -78,6 +88,19 @@ if(BUILD_TESTING)
         Qt6::Core
         Qt6::Test
     )
+
+    qt_add_executable(dvrworkspacehelpers-tests
+        src/dvrworkspacehelpers.cpp
+        src/dvrworkspacehelpers.h
+        tests/dvrworkspacehelpers_tests.cpp
+    )
+    target_include_directories(dvrworkspacehelpers-tests PRIVATE src)
+    target_link_libraries(dvrworkspacehelpers-tests
+        PRIVATE
+        Qt6::Core
+        Qt6::Test
+    )
+
     add_test(
         NAME client-offscreen-smoke
         COMMAND ${CMAKE_COMMAND} -E env
@@ -89,7 +112,9 @@ if(BUILD_TESTING)
     )
     add_test(NAME backendlaunchconfig-tests COMMAND backendlaunchconfig-tests)
     add_test(NAME channelnavigation-tests COMMAND channelnavigation-tests)
+    add_test(NAME dvrworkspacehelpers-tests COMMAND dvrworkspacehelpers-tests)
     set_tests_properties(client-offscreen-smoke PROPERTIES TIMEOUT 10)
     set_tests_properties(backendlaunchconfig-tests PROPERTIES TIMEOUT 10)
     set_tests_properties(channelnavigation-tests PROPERTIES TIMEOUT 10)
+    set_tests_properties(dvrworkspacehelpers-tests PROPERTIES TIMEOUT 10)
 endif()

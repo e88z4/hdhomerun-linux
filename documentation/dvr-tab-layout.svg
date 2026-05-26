@@ -1,0 +1,74 @@
+<svg width="1280" height="760" viewBox="0 0 1280 760" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="760" fill="#08131c"/>
+
+  <rect x="24" y="24" width="1232" height="74" rx="18" fill="#0d1b26" stroke="#173245"/>
+  <text x="48" y="67" fill="#f3f7fa" font-family="IBM Plex Sans, sans-serif" font-size="28" font-weight="700">HDHomeRun Linux Player</text>
+
+  <rect x="360" y="39" width="220" height="44" rx="18" fill="#112838" stroke="#20445c"/>
+  <rect x="366" y="45" width="102" height="32" rx="14" fill="#173247" stroke="#2d5a74"/>
+  <rect x="472" y="45" width="102" height="32" rx="14" fill="#1a4258" stroke="#7fd4ff"/>
+  <text x="400" y="65" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="15" font-weight="700">Live TV</text>
+  <text x="513" y="65" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="15" font-weight="700">DVR</text>
+
+  <rect x="610" y="39" width="610" height="44" rx="18" fill="#112838" stroke="#20445c"/>
+  <text x="632" y="65" fill="#9fb5c5" font-family="IBM Plex Sans, sans-serif" font-size="14">Device</text>
+  <rect x="692" y="47" width="500" height="28" rx="10" fill="#0d1a24" stroke="#183447"/>
+  <text x="708" y="65" fill="#dcecf7" font-family="IBM Plex Sans, sans-serif" font-size="13">Selected HDHomeRun device</text>
+
+  <rect x="24" y="122" width="360" height="614" rx="24" fill="#0d1a24" stroke="#183447"/>
+  <text x="46" y="160" fill="#f2f7fb" font-family="IBM Plex Sans, sans-serif" font-size="24" font-weight="700">Panel A: Recordings</text>
+  <text x="46" y="186" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="13">Grouped series list. Select one recording here.</text>
+
+  <rect x="46" y="206" width="316" height="48" rx="12" fill="#112838" stroke="#2d5a74"/>
+  <text x="177" y="236" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="700">Refresh</text>
+
+  <rect x="46" y="274" width="316" height="92" rx="18" fill="#0a131b" stroke="#193447"/>
+  <rect x="58" y="286" width="292" height="54" rx="14" fill="#143a50" stroke="#69c6ff"/>
+  <text x="74" y="318" fill="#dcecf7" font-family="IBM Plex Sans, sans-serif" font-size="24" font-weight="700">-</text>
+  <text x="104" y="311" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="16" font-weight="700">Series title</text>
+  <text x="104" y="329" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">2 episodes</text>
+
+  <rect x="58" y="346" width="292" height="76" rx="16" fill="#16384c" stroke="#69c6ff"/>
+  <text x="74" y="375" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="700">Recording title or episode title</text>
+  <text x="74" y="395" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Channel number • Channel name</text>
+  <text x="74" y="413" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Record start date/time</text>
+  <text x="300" y="395" fill="#7fd4ff" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="700">Selected</text>
+
+  <rect x="406" y="122" width="502" height="614" rx="24" fill="none" stroke="#173245" stroke-dasharray="8 8"/>
+  <text x="428" y="150" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="13">Panel group B: Playback + details column</text>
+
+  <rect x="428" y="170" width="458" height="64" rx="20" fill="#10232f" stroke="#23445b"/>
+  <text x="448" y="199" fill="#f2f7fb" font-family="IBM Plex Sans, sans-serif" font-size="20" font-weight="700">Panel B1: DVR Status Banner</text>
+  <text x="448" y="220" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Workspace warnings, refresh hints, DVR state messages</text>
+
+  <rect x="428" y="250" width="458" height="286" rx="24" fill="#0d1a24" stroke="#183447"/>
+  <text x="448" y="286" fill="#f2f7fb" font-family="IBM Plex Sans, sans-serif" font-size="22" font-weight="700">Panel B2: Playback Stage</text>
+  <text x="448" y="312" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Recorded playback video area, overlay controls, errors, diagnostics summary</text>
+  <rect x="448" y="332" width="418" height="178" rx="18" fill="#08131c" stroke="#173245"/>
+  <text x="592" y="426" fill="#6f8798" font-family="IBM Plex Sans, sans-serif" font-size="16">Recorded video surface</text>
+
+  <rect x="428" y="552" width="458" height="164" rx="24" fill="#0d1a24" stroke="#183447"/>
+  <text x="448" y="588" fill="#f2f7fb" font-family="IBM Plex Sans, sans-serif" font-size="22" font-weight="700">Panel B3: Recording Details</text>
+  <text x="448" y="612" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Title, episode title, air date, synopsis, and DVR action buttons</text>
+  <rect x="448" y="630" width="418" height="62" rx="14" fill="#112838" stroke="#2d5a74"/>
+  <text x="464" y="652" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="700">Action area</text>
+  <text x="464" y="674" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Play / Stop / Delete / Rule Options live here</text>
+
+  <rect x="930" y="122" width="326" height="614" rx="24" fill="#0d1a24" stroke="#183447"/>
+  <text x="952" y="160" fill="#f2f7fb" font-family="IBM Plex Sans, sans-serif" font-size="24" font-weight="700">Panel C: Upcoming</text>
+  <text x="952" y="186" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="13">Scheduled upcoming DVR items and rule actions</text>
+
+  <rect x="952" y="206" width="282" height="48" rx="12" fill="#112838" stroke="#2d5a74"/>
+  <text x="1068" y="236" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="700">Refresh</text>
+
+  <rect x="952" y="276" width="282" height="124" rx="18" fill="#101e29" stroke="#1d4259"/>
+  <text x="970" y="304" fill="#eff7fb" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="700">Upcoming title</text>
+  <text x="970" y="323" fill="#bcd0dc" font-family="IBM Plex Sans, sans-serif" font-size="12">Episode title</text>
+  <text x="970" y="344" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="11">Channel • Start date/time</text>
+  <rect x="970" y="360" width="112" height="26" rx="10" fill="#ffffff" stroke="#d9d9d9"/>
+  <rect x="1094" y="360" width="124" height="26" rx="10" fill="#ffffff" stroke="#d9d9d9"/>
+  <text x="978" y="378" fill="#222" font-family="IBM Plex Sans, sans-serif" font-size="11">Rule Options</text>
+  <text x="1104" y="378" fill="#222" font-family="IBM Plex Sans, sans-serif" font-size="11">Delete Rule</text>
+
+  <text x="24" y="750" fill="#8ea7b9" font-family="IBM Plex Sans, sans-serif" font-size="12">Wide layout note: the left rail is Recordings, the center column is Status + Playback + Recording Details, and the right rail is Upcoming.</text>
+</svg>

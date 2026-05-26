@@ -4,6 +4,7 @@ use axum::body::Body;
 use axum::http::Request;
 use hdhomerun_backend::app::{AppState, build_app};
 use hdhomerun_backend::device::DiscoveredDevice;
+use hdhomerun_backend::dvr::StaticDvrFixtures;
 use hdhomerun_backend::models::{
     ChannelAvailability, ContractEndpointStatus, LineupChannel, PlaybackCommandRequest,
     PlaybackCommandResponse, PlaybackCurrentResponse, PlaybackSessionStatus,
@@ -53,6 +54,7 @@ fn playback_test_state(playback_fixtures: StaticPlayerAdapterFixtures) -> AppSta
             friendly_name: "HDHomeRun 1234ABCD".to_string(),
             base_url: "http://192.168.1.10".to_string(),
             device_auth: None,
+            storage_url: None,
             lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
             tuner_count: 4,
             is_legacy: false,
@@ -60,6 +62,7 @@ fn playback_test_state(playback_fixtures: StaticPlayerAdapterFixtures) -> AppSta
         lineups,
         HashMap::new(),
         HashMap::new(),
+        StaticDvrFixtures::default(),
         playback_fixtures,
     )
 }

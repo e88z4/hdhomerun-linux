@@ -15,8 +15,8 @@ use serde_json::{Value, json};
 
 use crate::models::{
     ContractEndpointStatus, LineupChannel, PlaybackCommandResponse, PlaybackCurrentResponse,
-    PlaybackSessionState, PlaybackSessionStatus, PlayerAdapterState, PlayerAdapterStatus,
-    RetryablePlaybackFailure,
+    PlaybackMode, PlaybackRecordingSummary, PlaybackSessionState, PlaybackSessionStatus,
+    PlayerAdapterState, PlayerAdapterStatus, RetryablePlaybackFailure,
 };
 
 const MPV_START_TIMEOUT: Duration = Duration::from_secs(2);
@@ -66,6 +66,7 @@ pub struct PlaybackService {
 struct PlaybackRuntime {
     session_state: PlaybackSessionState,
     current_channel: Option<LineupChannel>,
+    current_recording: Option<PlaybackRecordingSummary>,
     warnings: Vec<String>,
     failure: Option<RetryablePlaybackFailure>,
 }
@@ -75,6 +76,7 @@ impl Default for PlaybackRuntime {
         Self {
             session_state: PlaybackSessionState::idle(),
             current_channel: None,
+            current_recording: None,
             warnings: Vec::new(),
             failure: None,
         }
@@ -120,6 +122,7 @@ impl PlaybackService {
             session_state: runtime.session_state.clone(),
             adapter_state: self.adapter.state(),
             current_channel: runtime.current_channel.clone(),
+            current_recording: runtime.current_recording.clone(),
             selected_device_ref: runtime.session_state.selected_device_ref.clone(),
             warnings,
             failure: runtime.failure.clone(),
@@ -127,15 +130,25 @@ impl PlaybackService {
     }
 
     pub fn start(&self, device_ref: String, channel: LineupChannel) -> PlaybackCommandResponse {
-        self.run_playback_command(device_ref, channel, false)
+        self.run_live_playback_command(device_ref, channel, false)
     }
 
     pub fn switch_channel(&self, device_ref: String, channel: LineupChannel) -> PlaybackCommandResponse {
-        self.run_playback_command(device_ref, channel, true)
+        self.run_live_playback_command(device_ref, channel, true)
+    }
+
+    pub fn start_recording(
+        &self,
+        device_ref: String,
+        recording: PlaybackRecordingSummary,
+        playback_url: String,
+    ) -> PlaybackCommandResponse {
+        self.run_source_command(device_ref, None, Some(recording), playback_url, PlaybackMode::Recorded, false)
     }
 
     pub fn stop(&self) -> PlaybackCommandResponse {
         let mut runtime = self.runtime.lock().expect("playback runtime lock");
+        let was_recorded = runtime.session_state.playback_mode == PlaybackMode::Recorded;
 
         let adapter_state = match self.adapter.stop_stream() {
             Ok(state) => state,
@@ -156,19 +169,43 @@ impl PlaybackService {
         };
 
         runtime.session_state.status = PlaybackSessionStatus::Stopped;
+        runtime.session_state.playback_mode = PlaybackMode::Idle;
         runtime.session_state.playback_url = None;
         runtime.session_state.warning = None;
         runtime.session_state.updated_at = timestamp_now();
         runtime.failure = None;
         runtime.warnings.clear();
+        if was_recorded {
+            runtime.current_recording = None;
+        }
 
         build_command_response(&runtime, adapter_state, false)
     }
 
-    fn run_playback_command(
+    fn run_live_playback_command(
         &self,
         device_ref: String,
         channel: LineupChannel,
+        is_switch: bool,
+    ) -> PlaybackCommandResponse {
+        let playback_url = channel.playback_url.clone().unwrap_or_default();
+        self.run_source_command(
+            device_ref,
+            Some(channel),
+            None,
+            playback_url,
+            PlaybackMode::Live,
+            is_switch,
+        )
+    }
+
+    fn run_source_command(
+        &self,
+        device_ref: String,
+        channel: Option<LineupChannel>,
+        recording: Option<PlaybackRecordingSummary>,
+        playback_url: String,
+        playback_mode: PlaybackMode,
         is_switch: bool,
     ) -> PlaybackCommandResponse {
         let mut runtime = self.runtime.lock().expect("playback runtime lock");
@@ -191,17 +228,20 @@ impl PlaybackService {
         } else {
             PlaybackSessionStatus::Starting
         };
+        runtime.session_state.playback_mode = playback_mode;
         runtime.session_state.selected_device_ref = Some(device_ref.clone());
-        runtime.session_state.channel_ref = Some(channel.channel_ref.clone());
-        runtime.session_state.playback_url = channel.playback_url.clone();
+        runtime.session_state.channel_ref = channel
+            .as_ref()
+            .map(|channel| channel.channel_ref.clone())
+            .or_else(|| recording.as_ref().map(|recording| recording.recording_id.clone()));
+        runtime.session_state.playback_url = Some(playback_url.clone());
         runtime.session_state.retry_count = 0;
         runtime.session_state.warning = None;
         runtime.session_state.updated_at = timestamp_now();
-        runtime.current_channel = Some(channel.clone());
+        runtime.current_channel = channel.clone();
+        runtime.current_recording = recording.clone();
         runtime.warnings.clear();
         runtime.failure = None;
-
-        let playback_url = channel.playback_url.clone().unwrap_or_default();
         let mut used_automatic_retry = false;
 
         let adapter_state = match self
@@ -228,7 +268,10 @@ impl PlaybackService {
                             &retry_error,
                             true,
                             Some(device_ref.clone()),
-                            Some(channel.channel_ref.clone()),
+                            channel
+                                .as_ref()
+                                .map(|channel| channel.channel_ref.clone())
+                                .or_else(|| recording.as_ref().map(|recording| recording.recording_id.clone())),
                         ));
                         runtime.warnings = vec![retry_error.message.clone()];
 
@@ -244,7 +287,10 @@ impl PlaybackService {
                     &error,
                     false,
                     Some(device_ref.clone()),
-                    Some(channel.channel_ref.clone()),
+                    channel
+                        .as_ref()
+                        .map(|channel| channel.channel_ref.clone())
+                        .or_else(|| recording.as_ref().map(|recording| recording.recording_id.clone())),
                 ));
                 runtime.warnings = vec![error.message.clone()];
 
@@ -281,6 +327,7 @@ fn build_command_response(
         session_state: runtime.session_state.clone(),
         adapter_state,
         current_channel: runtime.current_channel.clone(),
+            current_recording: runtime.current_recording.clone(),
         selected_device_ref: runtime.session_state.selected_device_ref.clone(),
         used_automatic_retry,
         warnings: runtime.warnings.clone(),

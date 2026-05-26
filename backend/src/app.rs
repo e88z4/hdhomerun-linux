@@ -10,6 +10,7 @@ use crate::device::{
     SharedDeviceDiscovery, SharedLineupProvider, SharedTunerDiagnosticsProvider,
     StaticDeviceDiscovery, StaticLineupProvider, StaticTunerDiagnosticsProvider,
 };
+use crate::dvr::{NativeDvrProvider, SharedDvrProvider, StaticDvrFixtures, StaticDvrProvider};
 use crate::guide::{NativeGuideProvider, SharedGuideProvider, StaticGuideProvider};
 use crate::http::routes::router;
 use crate::models::{
@@ -25,6 +26,7 @@ pub struct AppState {
     device_discovery: SharedDeviceDiscovery,
     lineup_provider: SharedLineupProvider,
     guide_provider: SharedGuideProvider,
+    dvr_provider: SharedDvrProvider,
     tuner_diagnostics_provider: SharedTunerDiagnosticsProvider,
     playback_service: SharedPlaybackService,
     lineup_cache: Arc<RwLock<HashMap<String, Vec<LineupChannel>>>>,
@@ -45,6 +47,7 @@ impl AppState {
             device_discovery: NativeDeviceDiscovery::shared(),
             lineup_provider: NativeLineupProvider::shared(),
             guide_provider: NativeGuideProvider::shared(),
+            dvr_provider: NativeDvrProvider::shared(),
             tuner_diagnostics_provider: NativeTunerDiagnosticsProvider::shared(),
             playback_service: PlaybackService::shared_default(state_dir.clone()),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -86,6 +89,7 @@ impl AppState {
             lineups,
             tuner_diagnostics,
             guide_programs,
+            StaticDvrFixtures::default(),
             StaticPlayerAdapterFixtures::default(),
         )
     }
@@ -96,6 +100,7 @@ impl AppState {
         lineups: HashMap<String, Result<Vec<LineupChannel>, String>>,
         tuner_diagnostics: HashMap<String, Vec<Result<TunerDiagnostic, String>>>,
         guide_programs: HashMap<String, String>,
+        dvr_fixtures: StaticDvrFixtures,
         playback_fixtures: StaticPlayerAdapterFixtures,
     ) -> Self {
         Self {
@@ -109,6 +114,7 @@ impl AppState {
             device_discovery: StaticDeviceDiscovery::shared(devices),
             lineup_provider: StaticLineupProvider::shared(lineups),
             guide_provider: StaticGuideProvider::shared(guide_programs),
+            dvr_provider: StaticDvrProvider::shared(dvr_fixtures),
             tuner_diagnostics_provider: StaticTunerDiagnosticsProvider::shared(tuner_diagnostics),
             playback_service: PlaybackService::shared_with_adapter(StaticPlayerAdapter::shared(playback_fixtures)),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -131,6 +137,10 @@ impl AppState {
 
     pub fn guide_provider(&self) -> SharedGuideProvider {
         Arc::clone(&self.guide_provider)
+    }
+
+    pub fn dvr_provider(&self) -> SharedDvrProvider {
+        Arc::clone(&self.dvr_provider)
     }
 
     pub fn tuner_diagnostics_provider(&self) -> SharedTunerDiagnosticsProvider {

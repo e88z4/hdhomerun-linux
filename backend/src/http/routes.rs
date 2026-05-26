@@ -1,4 +1,4 @@
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
@@ -6,9 +6,18 @@ use tokio::task;
 
 use crate::app::AppState;
 use crate::device::{build_devices_response, reconcile_remembered_context};
+use crate::dvr::{
+    DvrReadinessSnapshot, DvrRecordingDeleteSnapshot, DvrRecordingPlaybackTarget,
+    DvrRecordingsSnapshot, DvrRuleDeleteSnapshot, DvrRuleMutationSnapshot, DvrUpcomingSnapshot,
+};
 use crate::error::AppError;
 use crate::models::{
     BootstrapMode, BootstrapResult, ContractEndpointDescriptor, ContractEndpointStatus,
+    CreateOneTimeRecordingRuleRequest, CreateSeriesRecordingRuleRequest, DvrReadinessResponse,
+    DvrReadinessState, DvrRecordingDeleteResponse, DvrRecordingsResponse,
+    DvrRecordingsState, DvrRuleDeleteResponse, DvrRuleMutationOutcome,
+    DvrRuleMutationResponse, DvrRulesResponse, DvrRulesState, DvrUpcomingResponse,
+    DvrUpcomingState,
     DeviceSelectionRequest, DevicesResponse, GuideResponse, GuideState, HealthStatus, LineupChannel,
     LineupResponse, LineupState,
     PlaybackCommandRequest, PlaybackCommandResponse, PlaybackCurrentResponse,
@@ -26,6 +35,15 @@ pub fn router(state: AppState) -> Router {
         .route("/api/lineup", get(lineup))
         .route("/api/guide", get(guide))
         .route("/api/tuners", get(tuners))
+        .route("/api/dvr/readiness", get(dvr_readiness))
+        .route("/api/dvr/rules", get(dvr_rules))
+        .route("/api/dvr/recordings", get(dvr_recordings))
+        .route("/api/dvr/recordings/{recording_id}/play", post(dvr_recording_play))
+        .route("/api/dvr/recordings/{recording_id}/delete", post(dvr_recording_delete))
+        .route("/api/dvr/rules/{recording_rule_id}/delete", post(dvr_rule_delete))
+        .route("/api/dvr/rules/series", post(dvr_series_rule_create))
+        .route("/api/dvr/rules/one-time", post(dvr_one_time_rule_create))
+        .route("/api/dvr/upcoming", get(dvr_upcoming))
         .route("/api/playback/current", get(playback_current))
         .route("/api/playback/start", post(playback_start))
         .route("/api/playback/stop", post(playback_stop))
@@ -410,6 +428,312 @@ async fn tuners(State(state): State<AppState>) -> Result<Json<TunerDiagnosticsRe
     }))
 }
 
+async fn dvr_readiness(State(state): State<AppState>) -> Result<Json<DvrReadinessResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Ok(Json(DvrReadinessResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: None,
+            state: DvrReadinessState::SelectionRequired,
+            usable: false,
+            conditions: Vec::new(),
+            warnings: vec!["select a discovered device before requesting DVR readiness".to_string()],
+        }));
+    };
+
+    let provider = state.dvr_provider();
+    let DvrReadinessSnapshot {
+        state: readiness_state,
+        usable,
+        conditions,
+        warnings,
+    } = task::spawn_blocking(move || provider.readiness_for(&selected_device))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR readiness task failed: {error}")))??;
+
+    Ok(Json(DvrReadinessResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: Some(context.selected_device_ref),
+        state: readiness_state,
+        usable,
+        conditions,
+        warnings,
+    }))
+}
+
+async fn dvr_rules(State(state): State<AppState>) -> Result<Json<DvrRulesResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Ok(Json(DvrRulesResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: None,
+            state: DvrRulesState::SelectionRequired,
+            rules: Vec::new(),
+            warnings: vec!["select a discovered device before requesting DVR rules".to_string()],
+        }));
+    };
+
+    let provider = state.dvr_provider();
+    let rules = task::spawn_blocking(move || provider.list_rules(&selected_device))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR rules task failed: {error}")));
+
+    match rules {
+        Ok(Ok(rules)) => Ok(Json(DvrRulesResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: DvrRulesState::Ready,
+            rules,
+            warnings: Vec::new(),
+        })),
+        _ => Ok(Json(DvrRulesResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: DvrRulesState::Unavailable,
+            rules: Vec::new(),
+            warnings: vec!["DVR recording rules are currently unavailable for the selected device".to_string()],
+        })),
+    }
+}
+
+async fn dvr_recordings(State(state): State<AppState>) -> Result<Json<DvrRecordingsResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Ok(Json(DvrRecordingsResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: None,
+            state: DvrRecordingsState::SelectionRequired,
+            recordings: Vec::new(),
+            warnings: vec!["select a discovered device before requesting DVR recordings".to_string()],
+        }));
+    };
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let snapshot = task::spawn_blocking(move || provider.recordings_for(&selected_device, &discovered_devices))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR recordings task failed: {error}")));
+
+    match snapshot {
+        Ok(Ok(DvrRecordingsSnapshot {
+            state: recordings_state,
+            recordings,
+            warnings,
+        })) => Ok(Json(DvrRecordingsResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: recordings_state,
+            recordings,
+            warnings,
+        })),
+        _ => Ok(Json(DvrRecordingsResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: DvrRecordingsState::Unavailable,
+            recordings: Vec::new(),
+            warnings: vec!["DVR recordings are currently unavailable for the selected device".to_string()],
+        })),
+    }
+}
+
+async fn dvr_recording_play(
+    State(state): State<AppState>,
+    Path(recording_id): Path<String>,
+) -> Result<Json<PlaybackCommandResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Err(AppError::Validation(
+            "select a discovered device before starting recorded playback".to_string(),
+        ));
+    };
+
+    let auto_resume = state
+        .state_store()
+        .load_context()?
+        .as_ref()
+        .map(|context| context.auto_resume)
+        .unwrap_or(false);
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let DvrRecordingPlaybackTarget {
+        recording,
+        playback_url,
+    } = task::spawn_blocking(move || provider.playback_target_for(&selected_device, &recording_id, &discovered_devices))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR recording playback task failed: {error}")))??;
+
+    let playback = state.playback_service();
+    let response = task::spawn_blocking(move || playback.start_recording(context.selected_device_ref.clone(), recording, playback_url))
+        .await
+        .map_err(|error| AppError::internal(format!("recorded playback start task failed: {error}")))?;
+
+    persist_playback_context(&state, &response, auto_resume)?;
+    Ok(Json(response))
+}
+
+async fn dvr_recording_delete(
+    State(state): State<AppState>,
+    Path(recording_id): Path<String>,
+) -> Result<Json<DvrRecordingDeleteResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Err(AppError::Validation(
+            "select a discovered device before deleting a recording".to_string(),
+        ));
+    };
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let DvrRecordingDeleteSnapshot { outcome, warnings } =
+        task::spawn_blocking(move || provider.delete_recording(&selected_device, &recording_id, &discovered_devices))
+            .await
+            .map_err(|error| AppError::internal(format!("DVR recording delete task failed: {error}")))??;
+
+    Ok(Json(DvrRecordingDeleteResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: Some(context.selected_device_ref),
+        outcome,
+        warnings,
+    }))
+}
+
+async fn dvr_series_rule_create(
+    State(state): State<AppState>,
+    Json(request): Json<CreateSeriesRecordingRuleRequest>,
+) -> Result<Json<DvrRuleMutationResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Err(AppError::Validation(
+            "select a discovered device before creating a DVR series rule".to_string(),
+        ));
+    };
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let DvrRuleMutationSnapshot {
+        outcome,
+        rules,
+        schedule_projection,
+        warnings,
+    } = task::spawn_blocking(move || provider.create_series_rule(&selected_device, &request, &discovered_devices))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR series-rule task failed: {error}")))??;
+
+    Ok(Json(DvrRuleMutationResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: Some(context.selected_device_ref),
+        outcome,
+        rules,
+        schedule_projection,
+        warnings,
+    }))
+}
+
+async fn dvr_one_time_rule_create(
+    State(state): State<AppState>,
+    Json(request): Json<CreateOneTimeRecordingRuleRequest>,
+) -> Result<Json<DvrRuleMutationResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Err(AppError::Validation(
+            "select a discovered device before creating a DVR one-time rule".to_string(),
+        ));
+    };
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let DvrRuleMutationSnapshot {
+        outcome,
+        rules,
+        schedule_projection,
+        warnings,
+    } = task::spawn_blocking(move || provider.create_one_time_rule(&selected_device, &request, &discovered_devices))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR one-time-rule task failed: {error}")))??;
+
+    Ok(Json(DvrRuleMutationResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: Some(context.selected_device_ref),
+        outcome: match outcome {
+            DvrRuleMutationOutcome::Confirmed => DvrRuleMutationOutcome::Confirmed,
+            DvrRuleMutationOutcome::InvalidAiring => DvrRuleMutationOutcome::InvalidAiring,
+        },
+        rules,
+        schedule_projection,
+        warnings,
+    }))
+}
+
+async fn dvr_rule_delete(
+    State(state): State<AppState>,
+    Path(recording_rule_id): Path<String>,
+) -> Result<Json<DvrRuleDeleteResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Err(AppError::Validation(
+            "select a discovered device before deleting a DVR rule".to_string(),
+        ));
+    };
+
+    let provider = state.dvr_provider();
+    let discovered_devices = context.discovered_devices;
+    let DvrRuleDeleteSnapshot { outcome, warnings } =
+        task::spawn_blocking(move || provider.delete_rule(&selected_device, &recording_rule_id, &discovered_devices))
+            .await
+            .map_err(|error| AppError::internal(format!("DVR rule delete task failed: {error}")))??;
+
+    Ok(Json(DvrRuleDeleteResponse {
+        status: ContractEndpointStatus::Available,
+        selected_device_ref: Some(context.selected_device_ref),
+        outcome,
+        warnings,
+    }))
+}
+
+async fn dvr_upcoming(State(state): State<AppState>) -> Result<Json<DvrUpcomingResponse>, AppError> {
+    let context = resolve_selected_device_context(&state).await?;
+    let Some(selected_device) = context.selected_device else {
+        return Ok(Json(DvrUpcomingResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: None,
+            state: DvrUpcomingState::SelectionRequired,
+            entries: Vec::new(),
+            schedule_projection: Vec::new(),
+            warnings: vec!["select a discovered device before requesting DVR upcoming state".to_string()],
+        }));
+    };
+
+    let provider = state.dvr_provider();
+    let snapshot = task::spawn_blocking(move || provider.upcoming_for(&selected_device))
+        .await
+        .map_err(|error| AppError::internal(format!("DVR upcoming task failed: {error}")));
+
+    match snapshot {
+        Ok(Ok(DvrUpcomingSnapshot {
+            state: upcoming_state,
+            entries,
+            schedule_projection,
+            warnings,
+        })) => Ok(Json(DvrUpcomingResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: upcoming_state,
+            entries,
+            schedule_projection,
+            warnings,
+        })),
+        _ => Ok(Json(DvrUpcomingResponse {
+            status: ContractEndpointStatus::Available,
+            selected_device_ref: Some(context.selected_device_ref),
+            state: DvrUpcomingState::Unavailable,
+            entries: Vec::new(),
+            schedule_projection: Vec::new(),
+            warnings: vec!["DVR upcoming schedule is currently unavailable for the selected device".to_string()],
+        })),
+    }
+}
+
 async fn playback_current(State(state): State<AppState>) -> Result<Json<PlaybackCurrentResponse>, AppError> {
     let playback = state.playback_service();
     let response = task::spawn_blocking(move || playback.current())
@@ -545,6 +869,51 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
             status: ContractEndpointStatus::Available,
         },
         ContractEndpointDescriptor {
+            name: "dvrReadiness".to_string(),
+            path: "/api/dvr/readiness".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrRules".to_string(),
+            path: "/api/dvr/rules".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrRecordings".to_string(),
+            path: "/api/dvr/recordings".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrRecordingPlay".to_string(),
+            path: "/api/dvr/recordings/{recording_id}/play".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrRecordingDelete".to_string(),
+            path: "/api/dvr/recordings/{recording_id}/delete".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrRuleDelete".to_string(),
+            path: "/api/dvr/rules/{recording_rule_id}/delete".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrSeriesRuleCreate".to_string(),
+            path: "/api/dvr/rules/series".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrOneTimeRuleCreate".to_string(),
+            path: "/api/dvr/rules/one-time".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
+            name: "dvrUpcoming".to_string(),
+            path: "/api/dvr/upcoming".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
+        ContractEndpointDescriptor {
             name: "playbackCurrent".to_string(),
             path: "/api/playback/current".to_string(),
             status: ContractEndpointStatus::Available,
@@ -640,6 +1009,12 @@ struct ResolvedPlaybackTarget {
     device_ref: String,
     channel: LineupChannel,
     auto_resume: bool,
+}
+
+struct SelectedDeviceContext {
+    discovered_devices: Vec<crate::device::DiscoveredDevice>,
+    selected_device: Option<crate::device::DiscoveredDevice>,
+    selected_device_ref: String,
 }
 
 async fn resolve_playback_target(
@@ -759,4 +1134,35 @@ fn playback_timestamp_now() -> String {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis().to_string())
         .unwrap_or_else(|_| "0".to_string())
+}
+
+async fn resolve_selected_device_context(
+    state: &AppState,
+) -> Result<SelectedDeviceContext, AppError> {
+    let remembered_context = state.state_store().load_context()?;
+    let discovered_devices = discover_devices(state).await?;
+    let (remembered_context, cleared_stale_device) =
+        reconcile_remembered_context(remembered_context, &discovered_devices);
+
+    if cleared_stale_device {
+        state.state_store().clear_context()?;
+    }
+
+    let selected_device_ref = remembered_context
+        .as_ref()
+        .and_then(|context| context.device_ref.clone())
+        .unwrap_or_default();
+    let selected_device = remembered_context.as_ref().and_then(|context| {
+        context
+            .device_ref
+            .as_deref()
+            .and_then(|device_ref| discovered_devices.iter().find(|device| device.device_ref == device_ref))
+            .cloned()
+    });
+
+    Ok(SelectedDeviceContext {
+        discovered_devices,
+        selected_device,
+        selected_device_ref,
+    })
 }

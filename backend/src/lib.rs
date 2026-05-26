@@ -1,5 +1,6 @@
 pub mod app;
 pub mod device;
+pub mod dvr;
 pub mod error;
 pub mod guide;
 pub mod http;

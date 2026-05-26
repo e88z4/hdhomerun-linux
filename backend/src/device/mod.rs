@@ -20,6 +20,7 @@ pub struct DiscoveredDevice {
     pub friendly_name: String,
     pub base_url: String,
     pub device_auth: Option<String>,
+    pub storage_url: Option<String>,
     pub lineup_url: Option<String>,
     pub tuner_count: u8,
     pub is_legacy: bool,
@@ -316,6 +317,7 @@ pub fn normalize_discovery_results(results: &[ffi::HdhomerunDiscoverDeviceV3]) -
             let base_url = ffi::char_array_to_string(&result.base_url);
             let device_auth = ffi::char_array_to_string(&result.device_auth);
             let lineup_url = ffi::char_array_to_string(&result.lineup_url);
+            let storage_url = ffi::char_array_to_string(&result.storage_url);
 
             DiscoveredDevice {
                 device_ref: format!("hdhr-{}", device_id.to_lowercase()),
@@ -323,6 +325,7 @@ pub fn normalize_discovery_results(results: &[ffi::HdhomerunDiscoverDeviceV3]) -
                 device_id,
                 base_url,
                 device_auth: (!device_auth.is_empty()).then_some(device_auth),
+                storage_url: (!storage_url.is_empty()).then_some(storage_url),
                 lineup_url: (!lineup_url.is_empty()).then_some(lineup_url),
                 tuner_count: result.tuner_count,
                 is_legacy: result.is_legacy,
@@ -586,6 +589,7 @@ mod tests {
                 friendly_name: "HDHomeRun 1234ABCD".to_string(),
                 base_url: "http://192.168.1.10".to_string(),
                 device_auth: None,
+                storage_url: None,
                 lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                 tuner_count: 4,
                 is_legacy: false,
@@ -618,6 +622,7 @@ mod tests {
                 friendly_name: "HDHomeRun 1234ABCD".to_string(),
                 base_url: "http://192.168.1.10".to_string(),
                 device_auth: None,
+                storage_url: None,
                 lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                 tuner_count: 4,
                 is_legacy: false,
@@ -681,6 +686,7 @@ mod tests {
                     friendly_name: "HDHomeRun 1234ABCD".to_string(),
                     base_url: "http://192.168.1.10".to_string(),
                     device_auth: None,
+                    storage_url: None,
                     lineup_url: Some("http://192.168.1.10/lineup.json".to_string()),
                     tuner_count: 4,
                     is_legacy: false,
