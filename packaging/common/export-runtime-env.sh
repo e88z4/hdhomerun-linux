@@ -45,5 +45,15 @@ hdhr_export_runtime_env() {
     fi
 
     export HDHR_BACKEND_PLAYER_MODE="${HDHR_BACKEND_PLAYER_MODE:-client}"
+
+    # On ARM64 (e.g. Raspberry Pi 4) enable the backend transcode proxy by
+    # default so that live TV is re-encoded to H.264 via V4L2 M2M hardware.
+    # This eliminates software MPEG-2 decode overhead in windowed mode.
+    # Users can override any of these by setting them before launching.
+    if [ "$(uname -m)" = "aarch64" ]; then
+        export HDHR_BACKEND_TRANSCODE_ENCODER="${HDHR_BACKEND_TRANSCODE_ENCODER:-h264_v4l2m2m}"
+        export HDHR_BACKEND_TRANSCODE_DECODER="${HDHR_BACKEND_TRANSCODE_DECODER:-mpeg2_v4l2m2m}"
+    fi
+
     return 0
 }
