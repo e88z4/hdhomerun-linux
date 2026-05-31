@@ -26,6 +26,9 @@ Pane {
     property string currentRecordingId: ""
     property string selectedRecordingId: ""
     property var recordingGroups: []
+    property string pendingChannelName: ""
+    property string pendingChannelNumber: ""
+    property real pendingDwellProgress: 0.0
     signal exitFullscreenRequested()
     signal toggleFullscreenRequested()
     signal retryRequested()
@@ -931,6 +934,67 @@ Pane {
                                 color: "#d7e5ef"
                                 font.family: "IBM Plex Sans"
                                 font.pixelSize: 13
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        id: pendingChannelCard
+                        visible: root.pendingChannelName !== "" && root.liveControlMode
+                        z: 3
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.topMargin: 24
+                        width: pendingChannelContent.implicitWidth + 32
+                        height: pendingChannelContent.implicitHeight + 24
+                        radius: 18
+                        color: "#cc0d1a2b"
+                        border.color: "#5cb9ea"
+
+                        Column {
+                            id: pendingChannelContent
+                            anchors.centerIn: parent
+                            spacing: 10
+
+                            Row {
+                                spacing: 8
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                Label {
+                                    visible: root.pendingChannelNumber !== ""
+                                    text: root.pendingChannelNumber
+                                    color: "#5cb9ea"
+                                    font.family: "IBM Plex Sans"
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Label {
+                                    text: root.pendingChannelName
+                                    color: "#f6fbff"
+                                    font.family: "IBM Plex Sans"
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+
+                            Rectangle {
+                                width: 200
+                                height: 4
+                                radius: 2
+                                color: "#1e3d52"
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width * root.pendingDwellProgress
+                                    radius: parent.radius
+                                    color: "#5cb9ea"
+                                }
                             }
                         }
                     }

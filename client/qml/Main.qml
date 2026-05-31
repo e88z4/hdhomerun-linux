@@ -78,6 +78,81 @@ ApplicationWindow {
         }
     }
 
+    property string pendingChannelRef: ""
+    property string pendingChannelName: ""
+    property string pendingChannelNumber: ""
+    property real pendingDwellProgress: 0.0
+
+    onDvrWorkspaceActiveChanged: {
+        if (dvrWorkspaceActive) {
+            dwellAnimation.stop()
+            pendingChannelRef = ""
+            pendingChannelName = ""
+            pendingChannelNumber = ""
+            pendingDwellProgress = 0.0
+        }
+    }
+
+    function findAdjacentPlayableChannelRef(channels, fromRef, direction) {
+        if (!channels || channels.length === 0 || direction === 0) {
+            return ""
+        }
+        const playableIndices = []
+        for (let i = 0; i < channels.length; i++) {
+            const ch = channels[i]
+            if (ch.availability === "playable" && (ch.channelRef || "").trim() !== "") {
+                playableIndices.push(i)
+            }
+        }
+        if (playableIndices.length === 0) {
+            return ""
+        }
+        let currentPlayableIndex = -1
+        for (let i = 0; i < playableIndices.length; i++) {
+            if (channels[playableIndices[i]].channelRef === fromRef) {
+                currentPlayableIndex = i
+                break
+            }
+        }
+        if (currentPlayableIndex < 0) {
+            const fallback = direction > 0 ? 0 : playableIndices.length - 1
+            return channels[playableIndices[fallback]].channelRef
+        }
+        const step = direction > 0 ? 1 : -1
+        const next = (currentPlayableIndex + step + playableIndices.length) % playableIndices.length
+        return channels[playableIndices[next]].channelRef
+    }
+
+    function setPendingChannel(channelRef) {
+        const channels = appController.channels
+        let name = channelRef
+        let number = ""
+        for (let i = 0; i < channels.length; i++) {
+            if (channels[i].channelRef === channelRef) {
+                name = channels[i].guideName || channels[i].guideNumber || channelRef
+                number = channels[i].guideNumber || ""
+                break
+            }
+        }
+        pendingChannelRef = channelRef
+        pendingChannelName = name
+        pendingChannelNumber = number
+        dwellAnimation.restart()
+    }
+
+    function navigatePendingChannel(direction) {
+        if (dvrWorkspaceActive) {
+            seekDvrPlayback(direction > 0 ? 10000 : -10000)
+            return
+        }
+        bumpOverlay()
+        const fromRef = pendingChannelRef !== "" ? pendingChannelRef : appController.currentChannelRef
+        const nextRef = findAdjacentPlayableChannelRef(appController.channels, fromRef, direction)
+        if (nextRef !== "") {
+            setPendingChannel(nextRef)
+        }
+    }
+
     minimumWidth: 1180
     minimumHeight: 720
     width: Math.min(Math.max(1440, Math.round(Screen.width * 0.88)), Math.max(960, Screen.width - 80))
@@ -90,6 +165,25 @@ ApplicationWindow {
 
     onHeightChanged: {
         guidePanelHeight = Math.max(guidePanelMinHeight, Math.min(guidePanelHeight, guidePanelMaxHeight))
+    }
+
+    NumberAnimation {
+        id: dwellAnimation
+        target: window
+        property: "pendingDwellProgress"
+        from: 1.0
+        to: 0.0
+        duration: 1500
+        easing.type: Easing.Linear
+        onFinished: {
+            if (pendingChannelRef !== "") {
+                appController.playChannel(pendingChannelRef)
+            }
+            pendingChannelRef = ""
+            pendingChannelName = ""
+            pendingChannelNumber = ""
+            pendingDwellProgress = 0.0
+        }
     }
 
     Shortcut {
@@ -144,27 +238,13 @@ ApplicationWindow {
     Shortcut {
         sequence: "Right"
         context: Qt.ApplicationShortcut
-        onActivated: {
-            if (window.dvrWorkspaceActive) {
-                window.seekDvrPlayback(10000)
-                return
-            }
-            window.bumpOverlay()
-            appController.playAdjacentChannel(1)
-        }
+        onActivated: window.navigatePendingChannel(1)
     }
 
     Shortcut {
         sequence: "Left"
         context: Qt.ApplicationShortcut
-        onActivated: {
-            if (window.dvrWorkspaceActive) {
-                window.seekDvrPlayback(-10000)
-                return
-            }
-            window.bumpOverlay()
-            appController.playAdjacentChannel(-1)
-        }
+        onActivated: window.navigatePendingChannel(-1)
     }
 
     Shortcut {
@@ -427,6 +507,9 @@ ApplicationWindow {
                     selectedRecordingId: appController.selectedRecordingId
                     recordingGroups: appController.dvrRecordingGroups
                     retryEnabled: appController.shellPhase === "playback_failed"
+                    pendingChannelName: window.pendingChannelName
+                    pendingChannelNumber: window.pendingChannelNumber
+                    pendingDwellProgress: window.pendingDwellProgress
                     onExitFullscreenRequested: window.exitFullscreen()
                     onToggleFullscreenRequested: window.toggleFullscreen()
                     onRetryRequested: appController.retryPlayback()
@@ -487,7 +570,7 @@ ApplicationWindow {
                         windowStart: appController.guideWindowStart
                         durationHours: appController.guideDurationHours
                         loading: appController.guideLoading
-                        onChannelActivated: appController.playChannel(channelRef)
+                        onChannelActivated: function(channelRef) { window.setPendingChannel(channelRef) }
                         onJumpToNowRequested: appController.jumpGuideToNow()
                         onRecordSeriesRequested: appController.createSeriesRuleFromGuide(guideContext)
                         onRecordOnceRequested: appController.createOneTimeRuleFromGuide(guideContext)
