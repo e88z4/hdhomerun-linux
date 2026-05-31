@@ -1,4 +1,6 @@
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
@@ -49,6 +51,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/playback/stop", post(playback_stop))
         .route("/api/playback/retry", post(playback_retry))
         .route("/api/playback/switch", post(playback_switch_channel))
+        .route("/api/stream/transcode/live", get(stream_transcode_live))
         .with_state(state)
 }
 
@@ -1165,4 +1168,21 @@ async fn resolve_selected_device_context(
         selected_device,
         selected_device_ref,
     })
+}
+/// `GET /api/stream/transcode/live`
+///
+/// Streams a transcoded version of the currently active live session.
+/// When `HDHR_BACKEND_TRANSCODE_ENCODER` is set, the backend rewrites
+/// `playback_url` in the session state to this route, so the Qt client
+/// receives H.264 MPEG-TS instead of raw MPEG-2 — enabling Pi 4 V4L2
+/// hardware decode and reducing compositor overhead in windowed mode.
+async fn stream_transcode_live(State(state): State<AppState>) -> Response {
+    let Some(stream_url) = state.playback_service().raw_stream_url() else {
+        return (
+            StatusCode::NOT_FOUND,
+            "no active live session available for transcoding",
+        )
+            .into_response();
+    };
+    crate::transcode::serve_transcoded_stream(stream_url).await
 }

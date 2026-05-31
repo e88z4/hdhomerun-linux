@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(hdhomerun-linux-player-client VERSION 0.2.1 LANGUAGES CXX)
+project(hdhomerun-linux-player-client VERSION 0.2.2 LANGUAGES CXX)
 
 include(CTest)
 

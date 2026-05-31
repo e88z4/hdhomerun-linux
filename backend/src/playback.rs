@@ -69,6 +69,12 @@ struct PlaybackRuntime {
     current_recording: Option<PlaybackRecordingSummary>,
     warnings: Vec<String>,
     failure: Option<RetryablePlaybackFailure>,
+    /// The original upstream stream URL when transcoding is active.
+    /// When `HDHR_BACKEND_TRANSCODE_ENCODER` is set, `session_state.playback_url`
+    /// is rewritten to the local `/api/stream/transcode/live` proxy URL;
+    /// this field preserves the real HDHomeRun URL so the transcode route
+    /// can pass it to ffmpeg.
+    raw_stream_url: Option<String>,
 }
 
 impl Default for PlaybackRuntime {
@@ -79,6 +85,7 @@ impl Default for PlaybackRuntime {
             current_recording: None,
             warnings: Vec::new(),
             failure: None,
+            raw_stream_url: None,
         }
     }
 }
@@ -146,6 +153,16 @@ impl PlaybackService {
         self.run_source_command(device_ref, None, Some(recording), playback_url, PlaybackMode::Recorded, false)
     }
 
+    /// Returns the original upstream stream URL when transcoding is active.
+    /// The `/api/stream/transcode/live` route uses this to feed ffmpeg.
+    pub fn raw_stream_url(&self) -> Option<String> {
+        self.runtime
+            .lock()
+            .expect("playback runtime lock")
+            .raw_stream_url
+            .clone()
+    }
+
     pub fn stop(&self) -> PlaybackCommandResponse {
         let mut runtime = self.runtime.lock().expect("playback runtime lock");
         let was_recorded = runtime.session_state.playback_mode == PlaybackMode::Recorded;
@@ -175,6 +192,7 @@ impl PlaybackService {
         runtime.session_state.updated_at = timestamp_now();
         runtime.failure = None;
         runtime.warnings.clear();
+        runtime.raw_stream_url = None;
         if was_recorded {
             runtime.current_recording = None;
         }
@@ -188,15 +206,24 @@ impl PlaybackService {
         channel: LineupChannel,
         is_switch: bool,
     ) -> PlaybackCommandResponse {
-        let playback_url = channel.playback_url.clone().unwrap_or_default();
-        self.run_source_command(
+        let raw_url = channel.playback_url.clone().unwrap_or_default();
+        let (playback_url, transcode_raw_url) = if crate::transcode::transcode_enabled() && !raw_url.is_empty() {
+            (crate::transcode::transcode_proxy_url(), Some(raw_url))
+        } else {
+            (raw_url, None)
+        };
+        let response = self.run_source_command(
             device_ref,
             Some(channel),
             None,
             playback_url,
             PlaybackMode::Live,
             is_switch,
-        )
+        );
+        // Store/clear the raw upstream URL after the command so the
+        // transcode route can retrieve it regardless of success/failure.
+        self.runtime.lock().expect("playback runtime lock").raw_stream_url = transcode_raw_url;
+        response
     }
 
     fn run_source_command(

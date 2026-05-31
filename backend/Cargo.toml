@@ -1,6 +1,6 @@
 [package]
 name = "hdhomerun-backend"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 
 [dependencies]
@@ -12,7 +12,8 @@ roxmltree = "0.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "net", "signal", "sync"] }
+tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "process"] }
+tokio-util = { version = "0.7", features = ["io"] }
 toml = "0.9"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
