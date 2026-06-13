@@ -20,9 +20,28 @@ HDHR_SKIP_BUILD=1 sh "$ROOT_DIR/packaging/debian/build-deb.sh"
 HDHR_SKIP_BUILD=1 sh "$ROOT_DIR/packaging/appimage/build-appimage.sh"
 HDHR_SKIP_BUILD=1 sh "$ROOT_DIR/packaging/flatpak/build-flatpak.sh"
 
+DEB_FILE="$ROOT_DIR/dist/hdhomerun-linux-player_${PACKAGE_VERSION}_${PACKAGE_ARCH}.deb"
+APPIMAGE_FILE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${APPIMAGE_ARCH}.AppImage"
+FLATPAK_FILE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${FLATPAK_ARCH}.flatpak"
+
+if [ ! -f "$DEB_FILE" ]; then
+    printf 'Missing Debian package: %s\n' "$DEB_FILE" >&2
+    exit 1
+fi
+
+if [ ! -x "$APPIMAGE_FILE" ]; then
+    printf 'Missing or non-executable AppImage: %s\n' "$APPIMAGE_FILE" >&2
+    exit 1
+fi
+
+if [ ! -f "$FLATPAK_FILE" ]; then
+    printf 'Missing Flatpak bundle: %s\n' "$FLATPAK_FILE" >&2
+    exit 1
+fi
+
 rm -rf "$DEBIAN_VERIFY_DIR"
 mkdir -p "$DEBIAN_VERIFY_DIR"
-dpkg-deb -x "$ROOT_DIR/dist/hdhomerun-linux-player_${PACKAGE_VERSION}_${PACKAGE_ARCH}.deb" "$DEBIAN_VERIFY_DIR"
+dpkg-deb -x "$DEB_FILE" "$DEBIAN_VERIFY_DIR"
 
 env PATH="$DEBIAN_VERIFY_DIR/usr/bin:$PATH" \
     QT_QPA_PLATFORM=offscreen \
@@ -32,9 +51,9 @@ env PATH="$DEBIAN_VERIFY_DIR/usr/bin:$PATH" \
 env APPIMAGE_EXTRACT_AND_RUN=1 \
     QT_QPA_PLATFORM=offscreen \
     HDHR_CLIENT_EXIT_AFTER_MS=750 \
-    "$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${APPIMAGE_ARCH}.AppImage" >/dev/null 2>&1
+    "$APPIMAGE_FILE" >/dev/null 2>&1
 
-flatpak install --user --noninteractive --reinstall "$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${FLATPAK_ARCH}.flatpak" >/dev/null
+flatpak install --user --noninteractive --reinstall "$FLATPAK_FILE" >/dev/null
 timeout 20s flatpak run --user \
     --env=QT_QPA_PLATFORM=offscreen \
     --env=HDHR_CLIENT_EXIT_AFTER_MS=750 \
