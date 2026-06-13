@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use axum::body::Body;
 use axum::http::Request;
+use axum::http::StatusCode;
 use hdhomerun_backend::app::{AppState, build_app};
 use hdhomerun_backend::device::DiscoveredDevice;
 use hdhomerun_backend::dvr::StaticDvrFixtures;
@@ -407,4 +408,40 @@ async fn playback_retry_replays_the_last_failed_channel() {
     assert_eq!(retry_payload.current_channel.as_ref().map(|channel| channel.guide_number.as_str()), Some("5.1"));
     assert!(retry_payload.failure.is_none());
     assert_eq!(retry_payload.adapter_state.process_id, Some(4102));
+}
+
+#[tokio::test]
+async fn transcode_live_without_active_session_returns_not_found() {
+    let app = build_app(playback_test_state(StaticPlayerAdapterFixtures::default()));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/stream/transcode/live")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn transcode_live_headless_channel_mode_reaches_transcode_config_check() {
+    let app = build_app(playback_test_state(StaticPlayerAdapterFixtures::default()));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/stream/transcode/live?deviceRef=hdhr-1234abcd&channelRef=5.1&profile=low")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("response");
+
+    // The channel resolved successfully in headless mode; failure is now only
+    // due to missing encoder configuration in test env.
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }

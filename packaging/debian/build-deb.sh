@@ -5,10 +5,11 @@ ROOT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 STAGE_DIR="$ROOT_DIR/dist/debian-root"
 OUTPUT_DIR="$ROOT_DIR/dist"
 PACKAGE_NAME="hdhomerun-linux-player"
-VERSION="${HDHR_PACKAGE_VERSION:-0.2.1}"
+VERSION="${HDHR_PACKAGE_VERSION:-0.3.0}"
 ARCHITECTURE="${HDHR_PACKAGE_ARCH:-$(dpkg --print-architecture)}"
 CLIENT_BIN="${HDHR_CLIENT_BIN:-$ROOT_DIR/build/client-release/hdhomerun-linux-player}"
 BACKEND_BIN="${HDHR_BACKEND_BIN:-$ROOT_DIR/backend/target/release/hdhomerun-backend}"
+HEADLESS_BIN="${HDHR_HEADLESS_BIN:-$ROOT_DIR/backend/target/release/hdhr-headless}"
 PACKAGE_FILE="$OUTPUT_DIR/${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}.deb"
 
 if [ "${HDHR_SKIP_BUILD:-0}" != "1" ]; then
@@ -22,6 +23,11 @@ fi
 
 if [ ! -x "$BACKEND_BIN" ]; then
     printf 'Missing backend binary: %s\n' "$BACKEND_BIN" >&2
+    exit 1
+fi
+
+if [ ! -x "$HEADLESS_BIN" ]; then
+    printf 'Missing headless CLI binary: %s\n' "$HEADLESS_BIN" >&2
     exit 1
 fi
 
@@ -49,6 +55,7 @@ EOF
 
 install -Dm755 "$CLIENT_BIN" "$STAGE_DIR/usr/bin/hdhomerun-linux-player"
 install -Dm755 "$BACKEND_BIN" "$STAGE_DIR/usr/bin/hdhomerun-backend"
+install -Dm755 "$HEADLESS_BIN" "$STAGE_DIR/usr/bin/hdhr-headless"
 install -Dm755 "$ROOT_DIR/packaging/common/export-runtime-env.sh" "$STAGE_DIR/usr/lib/hdhomerun-linux-player/export-runtime-env.sh"
 install -Dm644 "$ROOT_DIR/packaging/common/hdhomerun-linux-player.desktop" "$STAGE_DIR/usr/share/applications/io.github.e88z4.HDHomeRunLinuxPlayer.desktop"
 install -Dm644 "$ROOT_DIR/packaging/common/io.github.e88z4.HDHomeRunLinuxPlayer.svg" "$STAGE_DIR/usr/share/icons/hicolor/scalable/apps/io.github.e88z4.HDHomeRunLinuxPlayer.svg"

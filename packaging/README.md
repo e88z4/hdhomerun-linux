@@ -28,7 +28,7 @@ Best on Debian and Debian-derived distributions.
 Use:
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.2.1_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.3.0_amd64.deb
 hdhomerun-linux-player
 ```
 
@@ -47,7 +47,7 @@ flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 
 The generated package artifacts are:
 
-- `dist/hdhomerun-linux-player_0.2.1_amd64.deb`
+- `dist/hdhomerun-linux-player_0.3.0_amd64.deb`
 - `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
 - `dist/HDHomeRunLinuxPlayer-x86_64.flatpak`
 
@@ -81,8 +81,8 @@ cmake --build build/client-release
 ## Additional Notes
 
 - no packaged format requires a separate host `mpv` install for normal use
-- AppImage and Flatpak bundle both the client and backend
-- Debian installs both binaries and depends on the host Qt runtime packages
+- AppImage and Flatpak bundle the client, backend, and `hdhr-headless` CLI helper
+- Debian installs all three binaries and depends on the host Qt runtime packages
 - the Flatpak runtime currently targets KDE `6.10`
 
 ## Format-Specific Notes

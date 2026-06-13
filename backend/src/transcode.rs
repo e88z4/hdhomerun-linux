@@ -12,9 +12,33 @@ const FFMPEG_BIN_ENV: &str = "HDHR_BACKEND_FFMPEG_BIN";
 const TRANSCODE_DECODER_ENV: &str = "HDHR_BACKEND_TRANSCODE_DECODER";
 const TRANSCODE_ENCODER_ENV: &str = "HDHR_BACKEND_TRANSCODE_ENCODER";
 const TRANSCODE_BITRATE_ENV: &str = "HDHR_BACKEND_TRANSCODE_BITRATE";
+const TRANSCODE_AUDIO_BITRATE_ENV: &str = "HDHR_BACKEND_TRANSCODE_AUDIO_BITRATE";
+const TRANSCODE_AUDIO_CHANNELS_ENV: &str = "HDHR_BACKEND_TRANSCODE_AUDIO_CHANNELS";
+const TRANSCODE_PROFILE_ENV: &str = "HDHR_BACKEND_TRANSCODE_PROFILE";
+const TRANSCODE_MAX_HEIGHT_ENV: &str = "HDHR_BACKEND_TRANSCODE_MAX_HEIGHT";
+const TRANSCODE_FPS_ENV: &str = "HDHR_BACKEND_TRANSCODE_FPS";
 
 const DEFAULT_FFMPEG_BIN: &str = "ffmpeg";
 const DEFAULT_BITRATE: &str = "4000k";
+
+#[derive(Clone, Debug, Default)]
+pub struct TranscodeRequestOptions {
+    pub profile: Option<String>,
+    pub video_bitrate: Option<String>,
+    pub audio_bitrate: Option<String>,
+    pub max_height: Option<u16>,
+    pub fps: Option<u8>,
+}
+
+#[derive(Clone, Debug)]
+struct EffectiveTranscodeSettings {
+    video_bitrate: String,
+    audio_bitrate: Option<String>,
+    audio_channels: Option<u8>,
+    max_height: Option<u16>,
+    fps: Option<u8>,
+    profile: String,
+}
 
 /// Returns true when at least one transcode env var is set to a non-empty value.
 ///
@@ -48,6 +72,10 @@ pub fn transcode_proxy_url() -> String {
     format!("http://{bind}/api/stream/transcode/live")
 }
 
+pub async fn serve_transcoded_stream(stream_url: String) -> Response {
+    serve_transcoded_stream_with_options(stream_url, TranscodeRequestOptions::default()).await
+}
+
 /// Spawns `ffmpeg` to transcode the given MPEG-TS `stream_url` and returns a
 /// streaming HTTP response.  The response body is the transcoded MPEG-TS
 /// stream piped from ffmpeg's stdout.
@@ -61,12 +89,14 @@ pub fn transcode_proxy_url() -> String {
 /// - `HDHR_BACKEND_TRANSCODE_DECODER` – input video decoder (optional, e.g. `mpeg2_v4l2m2m`)
 /// - `HDHR_BACKEND_TRANSCODE_ENCODER` – output video encoder (required, e.g. `h264_v4l2m2m`)
 /// - `HDHR_BACKEND_TRANSCODE_BITRATE` – output video bitrate (default: `4000k`)
-pub async fn serve_transcoded_stream(stream_url: String) -> Response {
+pub async fn serve_transcoded_stream_with_options(
+    stream_url: String,
+    options: TranscodeRequestOptions,
+) -> Response {
     let ffmpeg_bin =
         std::env::var(FFMPEG_BIN_ENV).unwrap_or_else(|_| DEFAULT_FFMPEG_BIN.to_string());
     let encoder = std::env::var(TRANSCODE_ENCODER_ENV).unwrap_or_default();
-    let bitrate =
-        std::env::var(TRANSCODE_BITRATE_ENV).unwrap_or_else(|_| DEFAULT_BITRATE.to_string());
+    let settings = effective_settings(&options);
 
     if encoder.trim().is_empty() {
         warn!("transcode requested but HDHR_BACKEND_TRANSCODE_ENCODER is not set");
@@ -92,19 +122,33 @@ pub async fn serve_transcoded_stream(stream_url: String) -> Response {
         .arg("-c:v")
         .arg(&encoder)
         .arg("-b:v")
-        .arg(&bitrate)
+        .arg(&settings.video_bitrate)
         .arg("-bufsize")
         .arg({
             // bufsize = 2 × bitrate (rough rule for hardware encoders)
-            let kbps: u32 = bitrate
+            let kbps: u32 = settings
+                .video_bitrate
                 .trim_end_matches('k')
                 .trim_end_matches('K')
                 .parse()
                 .unwrap_or(4000);
             format!("{}k", kbps * 2)
         })
-        .arg("-c:a")
-        .arg("copy")
+        .args(video_filter_args(settings.max_height, settings.fps));
+
+    if let Some(audio_bitrate) = settings.audio_bitrate.as_deref() {
+        cmd.arg("-c:a")
+            .arg("aac")
+            .arg("-b:a")
+            .arg(audio_bitrate);
+        if let Some(audio_channels) = settings.audio_channels {
+            cmd.arg("-ac").arg(audio_channels.to_string());
+        }
+    } else {
+        cmd.arg("-c:a").arg("copy");
+    }
+
+    cmd
         .arg("-f")
         .arg("mpegts")
         .arg("pipe:1")
@@ -115,7 +159,12 @@ pub async fn serve_transcoded_stream(stream_url: String) -> Response {
     info!(
         stream_url = %stream_url,
         encoder = %encoder,
-        bitrate = %bitrate,
+        bitrate = %settings.video_bitrate,
+        audio_bitrate = %settings.audio_bitrate.as_deref().unwrap_or("copy"),
+        audio_channels = ?settings.audio_channels,
+        max_height = ?settings.max_height,
+        fps = ?settings.fps,
+        profile = %settings.profile,
         "starting live transcode"
     );
 
@@ -155,5 +204,164 @@ pub async fn serve_transcoded_stream(stream_url: String) -> Response {
             )
                 .into_response()
         }
+    }
+}
+
+fn effective_settings(options: &TranscodeRequestOptions) -> EffectiveTranscodeSettings {
+    let configured_profile = options
+        .profile
+        .clone()
+        .or_else(|| std::env::var(TRANSCODE_PROFILE_ENV).ok())
+        .unwrap_or_else(|| "legacy".to_string())
+        .trim()
+        .to_ascii_lowercase();
+
+    let mut settings = match configured_profile.as_str() {
+        "very_low" | "very-low" => EffectiveTranscodeSettings {
+            video_bitrate: "500k".to_string(),
+            audio_bitrate: Some("64k".to_string()),
+            audio_channels: Some(2),
+            max_height: Some(360),
+            fps: Some(20),
+            profile: "very_low".to_string(),
+        },
+        "low" => EffectiveTranscodeSettings {
+            video_bitrate: "900k".to_string(),
+            audio_bitrate: Some("96k".to_string()),
+            audio_channels: Some(2),
+            max_height: Some(480),
+            fps: Some(24),
+            profile: "low".to_string(),
+        },
+        "balanced" => EffectiveTranscodeSettings {
+            video_bitrate: "1500k".to_string(),
+            audio_bitrate: Some("128k".to_string()),
+            audio_channels: Some(2),
+            max_height: Some(720),
+            fps: Some(30),
+            profile: "balanced".to_string(),
+        },
+        "high" => EffectiveTranscodeSettings {
+            video_bitrate: "3000k".to_string(),
+            audio_bitrate: Some("160k".to_string()),
+            audio_channels: Some(2),
+            max_height: Some(1080),
+            fps: Some(30),
+            profile: "high".to_string(),
+        },
+        _ => EffectiveTranscodeSettings {
+            video_bitrate: std::env::var(TRANSCODE_BITRATE_ENV)
+                .unwrap_or_else(|_| DEFAULT_BITRATE.to_string()),
+            audio_bitrate: std::env::var(TRANSCODE_AUDIO_BITRATE_ENV)
+                .ok()
+                .filter(|value| !value.trim().is_empty()),
+            audio_channels: std::env::var(TRANSCODE_AUDIO_CHANNELS_ENV)
+                .ok()
+                .and_then(|value| value.parse::<u8>().ok())
+                .filter(|value| *value > 0),
+            max_height: std::env::var(TRANSCODE_MAX_HEIGHT_ENV)
+                .ok()
+                .and_then(|value| value.parse::<u16>().ok())
+                .filter(|value| *value > 0),
+            fps: std::env::var(TRANSCODE_FPS_ENV)
+                .ok()
+                .and_then(|value| value.parse::<u8>().ok())
+                .filter(|value| *value > 0),
+            profile: "legacy".to_string(),
+        },
+    };
+
+    if let Some(video_bitrate) = options.video_bitrate.as_ref() {
+        if !video_bitrate.trim().is_empty() {
+            settings.video_bitrate = video_bitrate.clone();
+        }
+    }
+    if let Some(audio_bitrate) = options.audio_bitrate.as_ref() {
+        if audio_bitrate.trim().is_empty() {
+            settings.audio_bitrate = None;
+        } else {
+            settings.audio_bitrate = Some(audio_bitrate.clone());
+        }
+    }
+    if let Some(max_height) = options.max_height {
+        if max_height > 0 {
+            settings.max_height = Some(max_height);
+        }
+    }
+    if let Some(fps) = options.fps {
+        if fps > 0 {
+            settings.fps = Some(fps);
+        }
+    }
+
+    settings
+}
+
+fn video_filter_args(max_height: Option<u16>, fps: Option<u8>) -> Vec<String> {
+    let mut filters = Vec::new();
+
+    if let Some(max_height) = max_height {
+        // Keep original aspect ratio while capping height, using a syntax that
+        // ffmpeg's filter parser accepts without shell escaping.
+        filters.push(format!(
+            "scale=4096:{h}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear",
+            h = max_height
+        ));
+    }
+    if let Some(fps) = fps {
+        filters.push(format!("fps={fps}"));
+    }
+
+    if filters.is_empty() {
+        Vec::new()
+    } else {
+        vec!["-vf".to_string(), filters.join(",")]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        TranscodeRequestOptions, effective_settings, video_filter_args,
+    };
+
+    #[test]
+    fn low_profile_sets_bandwidth_friendly_defaults() {
+        let settings = effective_settings(&TranscodeRequestOptions {
+            profile: Some("low".to_string()),
+            ..TranscodeRequestOptions::default()
+        });
+
+        assert_eq!(settings.profile, "low");
+        assert_eq!(settings.video_bitrate, "900k");
+        assert_eq!(settings.audio_bitrate.as_deref(), Some("96k"));
+        assert_eq!(settings.audio_channels, Some(2));
+        assert_eq!(settings.max_height, Some(480));
+        assert_eq!(settings.fps, Some(24));
+    }
+
+    #[test]
+    fn request_overrides_replace_profile_defaults() {
+        let settings = effective_settings(&TranscodeRequestOptions {
+            profile: Some("very_low".to_string()),
+            video_bitrate: Some("700k".to_string()),
+            audio_bitrate: Some("80k".to_string()),
+            max_height: Some(404),
+            fps: Some(18),
+        });
+
+        assert_eq!(settings.video_bitrate, "700k");
+        assert_eq!(settings.audio_bitrate.as_deref(), Some("80k"));
+        assert_eq!(settings.max_height, Some(404));
+        assert_eq!(settings.fps, Some(18));
+    }
+
+    #[test]
+    fn video_filters_emit_expected_ffmpeg_arguments() {
+        let filters = video_filter_args(Some(480), Some(24));
+
+        assert_eq!(filters[0], "-vf");
+        assert!(filters[1].contains("scale=4096:480:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear"));
+        assert!(filters[1].contains("fps=24"));
     }
 }

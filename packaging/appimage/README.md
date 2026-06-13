@@ -13,6 +13,7 @@ chmod +x dist/HDHomeRunLinuxPlayer-x86_64.AppImage
 
 - the desktop client
 - the local backend
+- the `hdhr-headless` CLI helper
 - the runtime helper used to point the client at the packaged backend
 
 The AppImage package uses embedded in-window playback by default. No host `mpv` install is required for normal packaged use.

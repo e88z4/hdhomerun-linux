@@ -27,6 +27,10 @@ modules:
         if [ -x dist/flatpak-root/app/bin/hdhomerun-backend ]; then
           install -Dm755 dist/flatpak-root/app/bin/hdhomerun-backend /app/bin/hdhomerun-backend
         fi
+      - |
+        if [ -x dist/flatpak-root/app/bin/hdhr-headless ]; then
+          install -Dm755 dist/flatpak-root/app/bin/hdhr-headless /app/bin/hdhr-headless
+        fi
     sources:
       - type: dir
         path: ../..

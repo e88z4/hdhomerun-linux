@@ -55,6 +55,18 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StreamTranscodeQuery {
+    device_ref: Option<String>,
+    channel_ref: Option<String>,
+    profile: Option<String>,
+    video_bitrate: Option<String>,
+    audio_bitrate: Option<String>,
+    max_height: Option<u16>,
+    fps: Option<u8>,
+}
+
 async fn health(State(state): State<AppState>) -> Json<HealthStatus> {
     let runtime = state.runtime_state().await;
     Json(HealthStatus {
@@ -941,6 +953,11 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
             path: "/api/playback/switch".to_string(),
             status: ContractEndpointStatus::Available,
         },
+        ContractEndpointDescriptor {
+            name: "streamTranscodeLive".to_string(),
+            path: "/api/stream/transcode/live".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
     ]
 }
 
@@ -1171,18 +1188,73 @@ async fn resolve_selected_device_context(
 }
 /// `GET /api/stream/transcode/live`
 ///
-/// Streams a transcoded version of the currently active live session.
+/// Streams a transcoded live stream in one of two modes:
+/// - session mode (default): uses the currently active live session
+/// - headless mode: when `channelRef` is provided, resolves the source URL
+///   directly from lineup data without requiring an active playback session
+///
+/// Optional query params for headless mode:
+/// - `deviceRef`: explicit device to source from
+/// - `channelRef`: channel ref or guide number (required for headless mode)
+///
+/// Optional transcode tuning params:
+/// - `profile`: `very_low`, `low`, `balanced`, or `high`
+/// - `videoBitrate`: FFmpeg bitrate string (for example, `900k`)
+/// - `audioBitrate`: FFmpeg bitrate string (for example, `96k`)
+/// - `maxHeight`: maximum output height
+/// - `fps`: output frame rate cap
+///
 /// When `HDHR_BACKEND_TRANSCODE_ENCODER` is set, the backend rewrites
 /// `playback_url` in the session state to this route, so the Qt client
 /// receives H.264 MPEG-TS instead of raw MPEG-2 — enabling Pi 4 V4L2
 /// hardware decode and reducing compositor overhead in windowed mode.
-async fn stream_transcode_live(State(state): State<AppState>) -> Response {
-    let Some(stream_url) = state.playback_service().raw_stream_url() else {
-        return (
-            StatusCode::NOT_FOUND,
-            "no active live session available for transcoding",
-        )
-            .into_response();
+async fn stream_transcode_live(
+    State(state): State<AppState>,
+    Query(query): Query<StreamTranscodeQuery>,
+) -> Response {
+    let stream_url = if query.channel_ref.is_none() {
+        let Some(stream_url) = state.playback_service().raw_stream_url() else {
+            return (
+                StatusCode::NOT_FOUND,
+                "no active live session available for transcoding",
+            )
+                .into_response();
+        };
+        stream_url
+    } else {
+        match resolve_transcode_source_url(&state, &query).await {
+            Ok(stream_url) => stream_url,
+            Err(error) => return error.into_response(),
+        }
     };
-    crate::transcode::serve_transcoded_stream(stream_url).await
+
+    let options = crate::transcode::TranscodeRequestOptions {
+        profile: query.profile,
+        video_bitrate: query.video_bitrate,
+        audio_bitrate: query.audio_bitrate,
+        max_height: query.max_height,
+        fps: query.fps,
+    };
+
+    crate::transcode::serve_transcoded_stream_with_options(stream_url, options).await
+}
+
+async fn resolve_transcode_source_url(
+    state: &AppState,
+    query: &StreamTranscodeQuery,
+) -> Result<String, AppError> {
+    let channel_ref = query
+        .channel_ref
+        .as_ref()
+        .ok_or_else(|| AppError::Validation("channelRef must be provided for headless transcode mode".to_string()))?
+        .clone();
+
+    let request = PlaybackCommandRequest {
+        device_ref: query.device_ref.clone(),
+        channel_ref,
+    };
+    let target = resolve_playback_target(state, &request).await?;
+    target.channel.playback_url.clone().ok_or_else(|| {
+        AppError::Validation("requested channel does not have a usable playback URL".to_string())
+    })
 }

@@ -23,6 +23,7 @@ flatpak uninstall io.github.e88z4.HDHomeRunLinuxPlayer
 ## Runtime Notes
 
 - the Flatpak package includes both the desktop client and the bundled backend
+- the Flatpak package also includes the `hdhr-headless` helper CLI
 - packaged playback defaults to embedded Qt Multimedia playback inside the app window
 - the Flatpak runtime currently targets KDE `6.10`
 

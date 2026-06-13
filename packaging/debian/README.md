@@ -5,7 +5,7 @@ Use the Debian package when you want the app installed through the normal Debian
 ## Install
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.2.1_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.3.0_amd64.deb
 ```
 
 ## Run
@@ -23,6 +23,7 @@ sudo apt remove hdhomerun-linux-player
 ## Package Behavior
 
 - installs the desktop client and backend under the normal system package layout
+- installs the `hdhr-headless` helper CLI for headless streaming workflows
 - relies on host Qt runtime packages instead of bundling a separate `mpv` runtime
 - uses embedded in-window playback by default
 
