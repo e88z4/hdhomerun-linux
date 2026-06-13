@@ -5,7 +5,7 @@ Use the Flatpak bundle when you want a sandboxed install that is less dependent 
 ## Install
 
 ```sh
-flatpak install ./dist/HDHomeRunLinuxPlayer.flatpak
+flatpak install ./dist/HDHomeRunLinuxPlayer-x86_64.flatpak
 ```
 
 ## Run

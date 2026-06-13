@@ -7,6 +7,8 @@ FLATPAK_STAGE="$ROOT_DIR/dist/flatpak-root/app/bin"
 BUILD_DIR="$ROOT_DIR/dist/flatpak-build"
 REPO_DIR="$ROOT_DIR/dist/flatpak-repo"
 BUNDLE_FILE="$ROOT_DIR/dist/HDHomeRunLinuxPlayer.flatpak"
+FLATPAK_ARCH="${HDHR_FLATPAK_ARCH:-x86_64}"
+BUNDLE_FILE_ARCH="$ROOT_DIR/dist/HDHomeRunLinuxPlayer-${FLATPAK_ARCH}.flatpak"
 CLIENT_BIN="${HDHR_CLIENT_BIN:-$ROOT_DIR/build/client-release/hdhomerun-linux-player}"
 BACKEND_BIN="${HDHR_BACKEND_BIN:-$ROOT_DIR/backend/target/release/hdhomerun-backend}"
 HEADLESS_BIN="${HDHR_HEADLESS_BIN:-$ROOT_DIR/backend/target/release/hdhr-headless}"
@@ -46,5 +48,10 @@ flatpak-builder \
     "$BUILD_DIR" \
     "$MANIFEST"
 
-flatpak build-bundle "$REPO_DIR" "$BUNDLE_FILE" io.github.e88z4.HDHomeRunLinuxPlayer stable
-printf 'Created Flatpak bundle: %s\n' "$BUNDLE_FILE"
+flatpak build-bundle "$REPO_DIR" "$BUNDLE_FILE_ARCH" io.github.e88z4.HDHomeRunLinuxPlayer stable
+
+# Keep a non-arch alias for local convenience and older docs/scripts.
+cp -f "$BUNDLE_FILE_ARCH" "$BUNDLE_FILE"
+
+printf 'Created Flatpak bundle: %s\n' "$BUNDLE_FILE_ARCH"
+printf 'Created Flatpak bundle alias: %s\n' "$BUNDLE_FILE"
