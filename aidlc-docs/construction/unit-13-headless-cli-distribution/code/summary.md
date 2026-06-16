@@ -46,7 +46,7 @@ Updated to state that packaged outputs include the headless helper CLI.
 
 - `sh packaging/common/build-release-binaries.sh`
 - `HDHR_SKIP_BUILD=1 sh packaging/debian/build-deb.sh`
-- `dpkg-deb -c dist/hdhomerun-linux-player_0.3.0_amd64.deb | grep hdhr-headless`
+- `dpkg-deb -c dist/hdhomerun-linux-player_0.4.0_amd64.deb | grep hdhr-headless`
 - `HDHR_SKIP_BUILD=1 sh packaging/appimage/build-appimage.sh`
 - Verified `dist/appimage-root/HDHomeRunLinuxPlayer.AppDir/usr/bin/hdhr-headless`
 - `HDHR_SKIP_BUILD=1 sh packaging/flatpak/build-flatpak.sh`

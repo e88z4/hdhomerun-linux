@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use axum::Router;
 use tokio::sync::RwLock;
@@ -18,6 +18,7 @@ use crate::models::{
 };
 use crate::playback::{PlaybackService, SharedPlaybackService, StaticPlayerAdapter, StaticPlayerAdapterFixtures};
 use crate::state::StateStore;
+use crate::tuner_limits::{TunerPermit, TunerPermitManager};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -29,6 +30,8 @@ pub struct AppState {
     dvr_provider: SharedDvrProvider,
     tuner_diagnostics_provider: SharedTunerDiagnosticsProvider,
     playback_service: SharedPlaybackService,
+    tuner_permit_manager: TunerPermitManager,
+    frontend_live_permit: Arc<Mutex<Option<TunerPermit>>>,
     lineup_cache: Arc<RwLock<HashMap<String, Vec<LineupChannel>>>>,
     service_version: Arc<str>,
     api_version: Arc<str>,
@@ -50,6 +53,8 @@ impl AppState {
             dvr_provider: NativeDvrProvider::shared(),
             tuner_diagnostics_provider: NativeTunerDiagnosticsProvider::shared(),
             playback_service: PlaybackService::shared_default(state_dir.clone()),
+            tuner_permit_manager: TunerPermitManager::from_env(),
+            frontend_live_permit: Arc::new(Mutex::new(None)),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
             service_version: env!("CARGO_PKG_VERSION").into(),
             api_version: crate::API_VERSION.into(),
@@ -117,6 +122,8 @@ impl AppState {
             dvr_provider: StaticDvrProvider::shared(dvr_fixtures),
             tuner_diagnostics_provider: StaticTunerDiagnosticsProvider::shared(tuner_diagnostics),
             playback_service: PlaybackService::shared_with_adapter(StaticPlayerAdapter::shared(playback_fixtures)),
+            tuner_permit_manager: TunerPermitManager::from_env(),
+            frontend_live_permit: Arc::new(Mutex::new(None)),
             lineup_cache: Arc::new(RwLock::new(HashMap::new())),
             service_version: env!("CARGO_PKG_VERSION").into(),
             api_version: crate::API_VERSION.into(),
@@ -149,6 +156,48 @@ impl AppState {
 
     pub fn playback_service(&self) -> SharedPlaybackService {
         Arc::clone(&self.playback_service)
+    }
+
+    pub fn tuner_permit_manager(&self) -> TunerPermitManager {
+        self.tuner_permit_manager.clone()
+    }
+
+    pub fn ensure_frontend_live_permit(
+        &self,
+        device_ref: &str,
+        tuner_count: u8,
+    ) -> Result<(), crate::error::AppError> {
+        let mut guard = self
+            .frontend_live_permit
+            .lock()
+            .expect("frontend live permit lock");
+
+        if guard
+            .as_ref()
+            .map(|permit| permit.device_ref() == device_ref)
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+
+        if guard.is_some() {
+            *guard = None;
+        }
+
+        let permit = self
+            .tuner_permit_manager
+            .try_acquire_frontend(device_ref, tuner_count)
+            .map_err(crate::error::AppError::resource_busy)?;
+        *guard = Some(permit);
+        Ok(())
+    }
+
+    pub fn release_frontend_live_permit(&self) {
+        let mut guard = self
+            .frontend_live_permit
+            .lock()
+            .expect("frontend live permit lock");
+        *guard = None;
     }
 
     pub async fn cached_lineup(&self, device_ref: &str) -> Option<Vec<LineupChannel>> {

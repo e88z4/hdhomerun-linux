@@ -23,6 +23,7 @@ use crate::models::{
     DeviceSelectionRequest, DevicesResponse, GuideResponse, GuideState, HealthStatus, LineupChannel,
     LineupResponse, LineupState,
     PlaybackCommandRequest, PlaybackCommandResponse, PlaybackCurrentResponse,
+    PlaybackSessionStatus,
     RememberedContext, RuntimeStateResponse, TunerDiagnostic, TunerDiagnosticsResponse,
     TunerDiagnosticsState,
 };
@@ -52,6 +53,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/playback/retry", post(playback_retry))
         .route("/api/playback/switch", post(playback_switch_channel))
         .route("/api/stream/transcode/live", get(stream_transcode_live))
+        .route(
+            "/api/stream/transcode/playlist.m3u",
+            get(stream_transcode_playlist),
+        )
         .with_state(state)
 }
 
@@ -65,6 +70,13 @@ struct StreamTranscodeQuery {
     audio_bitrate: Option<String>,
     max_height: Option<u16>,
     fps: Option<u8>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StreamTranscodePlaylistQuery {
+    device_ref: Option<String>,
+    public_base: Option<String>,
 }
 
 async fn health(State(state): State<AppState>) -> Json<HealthStatus> {
@@ -763,12 +775,17 @@ async fn playback_start(
     Json(request): Json<PlaybackCommandRequest>,
 ) -> Result<Json<PlaybackCommandResponse>, AppError> {
     let target = resolve_playback_target(&state, &request).await?;
+    state.ensure_frontend_live_permit(&target.device_ref, target.tuner_count)?;
     let playback = state.playback_service();
     let device_ref = target.device_ref.clone();
     let channel = target.channel.clone();
     let response = task::spawn_blocking(move || playback.start(device_ref, channel))
         .await
         .map_err(|error| AppError::internal(format!("playback start task failed: {error}")))?;
+
+    if !session_holds_live_tuner(&response.session_state.status) {
+        state.release_frontend_live_permit();
+    }
 
     persist_playback_context(&state, &response, target.auto_resume)?;
     Ok(Json(response))
@@ -787,6 +804,8 @@ async fn playback_stop(State(state): State<AppState>) -> Result<Json<PlaybackCom
         .await
         .map_err(|error| AppError::internal(format!("playback stop task failed: {error}")))?;
 
+    state.release_frontend_live_permit();
+
     persist_playback_context(&state, &response, auto_resume)?;
     Ok(Json(response))
 }
@@ -796,12 +815,17 @@ async fn playback_switch_channel(
     Json(request): Json<PlaybackCommandRequest>,
 ) -> Result<Json<PlaybackCommandResponse>, AppError> {
     let target = resolve_playback_target(&state, &request).await?;
+    state.ensure_frontend_live_permit(&target.device_ref, target.tuner_count)?;
     let playback = state.playback_service();
     let device_ref = target.device_ref.clone();
     let channel = target.channel.clone();
     let response = task::spawn_blocking(move || playback.switch_channel(device_ref, channel))
         .await
         .map_err(|error| AppError::internal(format!("playback switch task failed: {error}")))?;
+
+    if !session_holds_live_tuner(&response.session_state.status) {
+        state.release_frontend_live_permit();
+    }
 
     persist_playback_context(&state, &response, target.auto_resume)?;
     Ok(Json(response))
@@ -832,10 +856,18 @@ async fn playback_retry(State(state): State<AppState>) -> Result<Json<PlaybackCo
     )
     .await?;
 
+    state.ensure_frontend_live_permit(&target.device_ref, target.tuner_count)?;
+
     let playback = state.playback_service();
-    let response = task::spawn_blocking(move || playback.start(target.device_ref.clone(), target.channel.clone()))
+    let target_device_ref = target.device_ref.clone();
+    let target_channel = target.channel.clone();
+    let response = task::spawn_blocking(move || playback.start(target_device_ref, target_channel))
         .await
         .map_err(|error| AppError::internal(format!("playback retry task failed: {error}")))?;
+
+    if !session_holds_live_tuner(&response.session_state.status) {
+        state.release_frontend_live_permit();
+    }
 
     persist_playback_context(&state, &response, target.auto_resume)?;
     Ok(Json(response))
@@ -958,6 +990,11 @@ fn available_contract_endpoints() -> Vec<ContractEndpointDescriptor> {
             path: "/api/stream/transcode/live".to_string(),
             status: ContractEndpointStatus::Available,
         },
+        ContractEndpointDescriptor {
+            name: "streamTranscodePlaylist".to_string(),
+            path: "/api/stream/transcode/playlist.m3u".to_string(),
+            status: ContractEndpointStatus::Available,
+        },
     ]
 }
 
@@ -1027,6 +1064,7 @@ async fn fetch_tuner_diagnostics(
 
 struct ResolvedPlaybackTarget {
     device_ref: String,
+    tuner_count: u8,
     channel: LineupChannel,
     auto_resume: bool,
 }
@@ -1108,12 +1146,23 @@ async fn resolve_playback_target(
 
     Ok(ResolvedPlaybackTarget {
         device_ref: device.device_ref,
+        tuner_count: device.tuner_count,
         channel,
         auto_resume: remembered_context
             .as_ref()
             .map(|context| context.auto_resume)
             .unwrap_or(false),
     })
+}
+
+fn session_holds_live_tuner(status: &PlaybackSessionStatus) -> bool {
+    matches!(
+        status,
+        PlaybackSessionStatus::Starting
+            | PlaybackSessionStatus::RetryingStart
+            | PlaybackSessionStatus::Playing
+            | PlaybackSessionStatus::Switching
+    )
 }
 
 fn channel_matches(channel: &LineupChannel, requested_channel_ref: &str) -> bool {
@@ -1212,7 +1261,7 @@ async fn stream_transcode_live(
     State(state): State<AppState>,
     Query(query): Query<StreamTranscodeQuery>,
 ) -> Response {
-    let stream_url = if query.channel_ref.is_none() {
+    let (stream_url, permit) = if query.channel_ref.is_none() {
         let Some(stream_url) = state.playback_service().raw_stream_url() else {
             return (
                 StatusCode::NOT_FOUND,
@@ -1220,10 +1269,25 @@ async fn stream_transcode_live(
             )
                 .into_response();
         };
-        stream_url
+        (stream_url, None)
     } else {
         match resolve_transcode_source_url(&state, &query).await {
-            Ok(stream_url) => stream_url,
+            Ok(source) => {
+                let permit = match state
+                    .tuner_permit_manager()
+                    .try_acquire_headless(&source.device_ref, source.tuner_count)
+                {
+                    Ok(permit) => permit,
+                    Err(message) => {
+                        return (
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            format!("tuner capacity unavailable for headless stream: {message}"),
+                        )
+                            .into_response();
+                    }
+                };
+                (source.stream_url, Some(permit))
+            }
             Err(error) => return error.into_response(),
         }
     };
@@ -1236,13 +1300,116 @@ async fn stream_transcode_live(
         fps: query.fps,
     };
 
-    crate::transcode::serve_transcoded_stream_with_options(stream_url, options).await
+    crate::transcode::serve_transcoded_stream_with_options_and_permit(stream_url, options, permit)
+        .await
+}
+
+struct ResolvedTranscodeSource {
+    stream_url: String,
+    device_ref: String,
+    tuner_count: u8,
+}
+
+const PLAYLIST_PROFILES: [&str; 4] = ["very_low", "low", "balanced", "high"];
+
+/// `GET /api/stream/transcode/playlist.m3u`
+///
+/// Publishes an M3U playlist with one entry per playable lineup channel and
+/// transcode quality profile. This is intended for direct VLC consumption.
+///
+/// Optional query params:
+/// - `deviceRef`: explicit source device; falls back to remembered selection
+/// - `publicBase`: optional absolute base URL (for example, `http://host:38080`)
+///   used to emit absolute stream URLs instead of relative paths
+async fn stream_transcode_playlist(
+    State(state): State<AppState>,
+    Query(query): Query<StreamTranscodePlaylistQuery>,
+) -> Response {
+    let selected = match resolve_playlist_device(&state, query.device_ref.as_deref()).await {
+        Ok(selected) => selected,
+        Err(error) => return error.into_response(),
+    };
+
+    let channels = match fetch_lineup(&state, selected.clone()).await {
+        Ok(channels) => {
+            state
+                .store_cached_lineup(selected.device_ref.clone(), channels.clone())
+                .await;
+            channels
+        }
+        Err(error) => match state.cached_lineup(&selected.device_ref).await {
+            Some(channels) => channels,
+            None => return error.into_response(),
+        },
+    };
+
+    let stream_prefix = query
+        .public_base
+        .as_deref()
+        .map(|base| base.trim_end_matches('/').to_string())
+        .unwrap_or_default();
+
+    let mut body = String::from("#EXTM3U\n");
+    for channel in channels.into_iter().filter(channel_is_playable_for_playlist) {
+        for profile in PLAYLIST_PROFILES {
+            let title = format!("{} {} [{}]", channel.guide_number, channel.guide_name, profile);
+            body.push_str(&format!("#EXTINF:-1,{title}\n"));
+            body.push_str(&format!(
+                "{}/api/stream/transcode/live?deviceRef={}&channelRef={}&profile={}\n",
+                stream_prefix, selected.device_ref, channel.guide_number, profile
+            ));
+        }
+    }
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/x-mpegURL; charset=utf-8")
+        .body(axum::body::Body::from(body))
+        .expect("valid playlist response")
+}
+
+async fn resolve_playlist_device(
+    state: &AppState,
+    explicit_device_ref: Option<&str>,
+) -> Result<crate::device::DiscoveredDevice, AppError> {
+    let remembered_context = state.state_store().load_context()?;
+    let discovered_devices = discover_devices(state).await?;
+    let (remembered_context, cleared_stale_device) =
+        reconcile_remembered_context(remembered_context, &discovered_devices);
+
+    if cleared_stale_device {
+        state.state_store().clear_context()?;
+    }
+
+    let target_device_ref = explicit_device_ref
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .or_else(|| remembered_context.and_then(|context| context.device_ref))
+        .ok_or_else(|| {
+            AppError::Validation(
+                "select a discovered device first or pass deviceRef when requesting the playlist"
+                    .to_string(),
+            )
+        })?;
+
+    discovered_devices
+        .into_iter()
+        .find(|device| device.device_ref == target_device_ref)
+        .ok_or_else(|| {
+            AppError::Validation("requested playlist device is not currently available".to_string())
+        })
+}
+
+fn channel_is_playable_for_playlist(channel: &LineupChannel) -> bool {
+    matches!(channel.availability, crate::models::ChannelAvailability::Playable)
+        && channel.playback_url.is_some()
 }
 
 async fn resolve_transcode_source_url(
     state: &AppState,
     query: &StreamTranscodeQuery,
-) -> Result<String, AppError> {
+) -> Result<ResolvedTranscodeSource, AppError> {
     let channel_ref = query
         .channel_ref
         .as_ref()
@@ -1254,7 +1421,13 @@ async fn resolve_transcode_source_url(
         channel_ref,
     };
     let target = resolve_playback_target(state, &request).await?;
-    target.channel.playback_url.clone().ok_or_else(|| {
+    let stream_url = target.channel.playback_url.clone().ok_or_else(|| {
         AppError::Validation("requested channel does not have a usable playback URL".to_string())
+    })?;
+
+    Ok(ResolvedTranscodeSource {
+        stream_url,
+        device_ref: target.device_ref,
+        tuner_count: target.tuner_count,
     })
 }

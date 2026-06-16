@@ -8,6 +8,8 @@ use tokio::process::Command;
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
 
+use crate::tuner_limits::TunerPermit;
+
 const FFMPEG_BIN_ENV: &str = "HDHR_BACKEND_FFMPEG_BIN";
 const TRANSCODE_DECODER_ENV: &str = "HDHR_BACKEND_TRANSCODE_DECODER";
 const TRANSCODE_ENCODER_ENV: &str = "HDHR_BACKEND_TRANSCODE_ENCODER";
@@ -73,7 +75,12 @@ pub fn transcode_proxy_url() -> String {
 }
 
 pub async fn serve_transcoded_stream(stream_url: String) -> Response {
-    serve_transcoded_stream_with_options(stream_url, TranscodeRequestOptions::default()).await
+    serve_transcoded_stream_with_options_and_permit(
+        stream_url,
+        TranscodeRequestOptions::default(),
+        None,
+    )
+    .await
 }
 
 /// Spawns `ffmpeg` to transcode the given MPEG-TS `stream_url` and returns a
@@ -92,6 +99,14 @@ pub async fn serve_transcoded_stream(stream_url: String) -> Response {
 pub async fn serve_transcoded_stream_with_options(
     stream_url: String,
     options: TranscodeRequestOptions,
+) -> Response {
+    serve_transcoded_stream_with_options_and_permit(stream_url, options, None).await
+}
+
+pub async fn serve_transcoded_stream_with_options_and_permit(
+    stream_url: String,
+    options: TranscodeRequestOptions,
+    permit: Option<TunerPermit>,
 ) -> Response {
     let ffmpeg_bin =
         std::env::var(FFMPEG_BIN_ENV).unwrap_or_else(|_| DEFAULT_FFMPEG_BIN.to_string());
@@ -180,6 +195,7 @@ pub async fn serve_transcoded_stream_with_options(
             // (client disconnect) the read-end of the pipe is closed and ffmpeg
             // receives SIGPIPE, causing it to exit and unblocking this wait task.
             tokio::spawn(async move {
+                let _permit = permit;
                 match child.wait().await {
                     Ok(status) if !status.success() => {
                         warn!(?status, "transcode ffmpeg process exited with non-zero status");

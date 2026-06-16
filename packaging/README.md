@@ -28,7 +28,7 @@ Best on Debian and Debian-derived distributions.
 Use:
 
 ```sh
-sudo apt install ./dist/hdhomerun-linux-player_0.3.0_amd64.deb
+sudo apt install ./dist/hdhomerun-linux-player_0.4.0_amd64.deb
 hdhomerun-linux-player
 ```
 
@@ -47,7 +47,7 @@ flatpak run io.github.e88z4.HDHomeRunLinuxPlayer
 
 The generated package artifacts are:
 
-- `dist/hdhomerun-linux-player_0.3.0_amd64.deb`
+- `dist/hdhomerun-linux-player_0.4.0_amd64.deb`
 - `dist/HDHomeRunLinuxPlayer-x86_64.AppImage`
 - `dist/HDHomeRunLinuxPlayer-x86_64.flatpak`
 

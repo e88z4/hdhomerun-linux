@@ -47,6 +47,17 @@ Headless stream endpoint:
 
 - `GET /api/stream/transcode/live?deviceRef=<deviceRef>&channelRef=<channelRef>`
 
+VLC-friendly playlist endpoint:
+
+- `GET /api/stream/transcode/playlist.m3u?deviceRef=<deviceRef>`
+
+The playlist endpoint publishes channel entries with quality variants (`very_low`, `low`, `balanced`, `high`) so VLC can switch channels/quality directly from one imported M3U.
+
+Optional playlist query params:
+
+- `deviceRef`: explicit source device; if omitted, the remembered selected device is used
+- `publicBase`: optional absolute base URL (for example `http://192.168.1.10:38080`) to emit absolute stream URLs
+
 The endpoint accepts either a channel ref (for example `channel:5.1`) or guide number (for example `5.1`) in `channelRef`.
 
 Low-bandwidth tuning query params:
@@ -63,6 +74,12 @@ Example remote URL:
 http://<backend-host>:38080/api/stream/transcode/live?deviceRef=hdhr-1234abcd&channelRef=5.1&profile=low
 ```
 
+Example playlist URL for VLC:
+
+```text
+http://<backend-host>:38080/api/stream/transcode/playlist.m3u?deviceRef=hdhr-1234abcd
+```
+
 Environment-based defaults are also supported:
 
 - `HDHR_BACKEND_TRANSCODE_PROFILE`
@@ -70,6 +87,18 @@ Environment-based defaults are also supported:
 - `HDHR_BACKEND_TRANSCODE_AUDIO_BITRATE`
 - `HDHR_BACKEND_TRANSCODE_MAX_HEIGHT`
 - `HDHR_BACKEND_TRANSCODE_FPS`
+
+Dynamic tuner permit controls:
+
+- `HDHR_BACKEND_TUNER_RESERVE_RECORDING`: reserve this many tuners for recording-priority capacity (default `0`)
+- `HDHR_BACKEND_FRONTEND_MIN_FREE`: when no frontend live session is active, keep at least this many tuners available for frontend playback by limiting new headless streams (default `1`)
+- `HDHR_BACKEND_HEADLESS_MAX_PER_DEVICE`: optional hard cap for headless transcode streams per device
+
+Concurrency behavior:
+
+- frontend live playback and headless transcoded streaming can run concurrently on the same machine
+- permits are tracked per device using each device's discovered `tuner_count`
+- headless streams are denied with `503` when capacity is exhausted or when frontend-reserved headroom must be preserved
 
 ## Headless CLI
 

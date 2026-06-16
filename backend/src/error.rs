@@ -25,6 +25,9 @@ pub enum AppError {
     #[error("validation failure: {0}")]
     Validation(String),
 
+    #[error("resource busy: {0}")]
+    ResourceBusy(String),
+
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -34,9 +37,14 @@ impl AppError {
         Self::Internal(message.into())
     }
 
+    pub fn resource_busy(message: impl Into<String>) -> Self {
+        Self::ResourceBusy(message.into())
+    }
+
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Validation(_) => StatusCode::BAD_REQUEST,
+            Self::ResourceBusy(_) => StatusCode::SERVICE_UNAVAILABLE,
             Self::StateIo { .. } | Self::StateParse { .. } | Self::Serialization { .. } | Self::Internal(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
@@ -49,6 +57,11 @@ impl AppError {
                 "validation_failed",
                 message,
                 "Correct the request and retry.",
+            ),
+            Self::ResourceBusy(message) => ApiErrorResponse::new(
+                "resource_busy",
+                message,
+                "Retry after one of the active streams stops.",
             ),
             Self::StateIo { .. } | Self::StateParse { .. } | Self::Serialization { .. } => ApiErrorResponse::new(
                 "state_unavailable",

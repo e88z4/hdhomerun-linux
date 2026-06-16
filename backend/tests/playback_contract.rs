@@ -445,3 +445,38 @@ async fn transcode_live_headless_channel_mode_reaches_transcode_config_check() {
     // due to missing encoder configuration in test env.
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
+
+#[tokio::test]
+async fn transcode_playlist_publishes_channel_quality_variants_for_vlc() {
+    let app = build_app(playback_test_state(StaticPlayerAdapterFixtures::default()));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/stream/transcode/playlist.m3u?deviceRef=hdhr-1234abcd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(content_type.contains("application/x-mpegURL"));
+
+    let body = response.into_body().collect().await.expect("body").to_bytes();
+    let playlist = String::from_utf8(body.to_vec()).expect("utf8 playlist");
+
+    assert!(playlist.starts_with("#EXTM3U\n"));
+    assert!(playlist.contains("5.1 News [very_low]"));
+    assert!(playlist.contains("5.1 News [low]"));
+    assert!(playlist.contains("5.1 News [balanced]"));
+    assert!(playlist.contains("5.1 News [high]"));
+    assert!(playlist.contains("7.2 Sports [very_low]"));
+    assert!(playlist.contains("/api/stream/transcode/live?deviceRef=hdhr-1234abcd&channelRef=5.1&profile=low"));
+    assert!(playlist.contains("/api/stream/transcode/live?deviceRef=hdhr-1234abcd&channelRef=7.2&profile=high"));
+}
